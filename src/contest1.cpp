@@ -3,7 +3,6 @@
 #include <geometry_msgs/Twist.h>
 #include <kobuki_msgs/BumperEvent.h>
 #include <sensor_msgs/LaserScan.h>
-#inlcude <nav_msgs>
 
 #include <stdio.h>
 #include <cmath>
@@ -21,11 +20,6 @@ void laserCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 	//fill with your code
 }
 
-void mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
-{
-
-}
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "image_listener");
@@ -33,11 +27,8 @@ int main(int argc, char **argv)
 
     ros::Subscriber bumper_sub = nh.subscribe("mobile_base/events/bumper", 10, &bumperCallback);
     ros::Subscriber laser_sub = nh.subscribe("scan", 10, &laserCallback);
-    ros::Subscriber map_sub = nh.subscribe("/map", 10, )
 
     ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel_mux/input/teleop", 1);
-    ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
-
 
     ros::Rate loop_rate(10);
 
