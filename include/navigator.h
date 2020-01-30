@@ -30,20 +30,23 @@ extern Wavefront_Detector wfd;
 class Navigator
 {
  private:
+
     float angular_vel; // <= M_PI/6 [rad/s]
     float linear_vel; // <= 0.25 [m/s]
+    ros::Publisher;
 
  public:
-    // accessors
+
+    // Accessors
     float get_angular_vel() {return angular_vel;}
     float get_linear_vel() {return linear_vel;}
     
-    // commands
+    // Commands
     void stop() {angular_vel = 0.0; linear_vel = 0.0;}
     void move_to_goal_point(float goal_x, float goal_y);
 
-    // constructor and destructor
-    Navigator() {angular_vel = 0.0; linear_vel = 0.0;}
+    // Constructor and destructor
+    Navigator();
     ~Navigator() {};
 };
 

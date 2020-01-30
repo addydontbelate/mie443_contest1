@@ -1,5 +1,14 @@
 #include "navigator.h"
 
+void Navigator::Navigator(ros::Publisher vel_pub)
+{   
+    // Default values
+    angular_vel = 0.0; 
+    linear_vel = 0.0;
+    vel_pub = vel_pub;
+
+}
+
 void Navigator::move_to_goal_point(float goal_x, float goal_y) 
 {
     // Loop until the robot is close to the desired x & y coordinates
