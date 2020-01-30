@@ -21,6 +21,7 @@ class Navigator
     
     // commands
     void stop() {angular_vel = 0.0; linear_vel = 0.0;}
+    void move_to_goal_point(float goal_x, float goal_y);
 
     // constructor and destructor
     Navigator() {angular_vel = 0.0; linear_vel = 0.0;}

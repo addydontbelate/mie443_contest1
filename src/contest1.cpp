@@ -179,6 +179,8 @@ int main(int argc, char **argv)
             ROS_INFO("Robot in INIT state");
             ; // rot 360;
             detect_frontier = true;
+
+            nav.move_to_goal_point(1,1);
         }
         else if (rob_state == _RECOVERY_)
         {
