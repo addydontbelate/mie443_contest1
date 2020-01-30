@@ -77,7 +77,7 @@ std::vector<std::vector<int>> Wavefront_Detector::frontiers(const nav_msgs::Occu
             if (new_frontier.size() > MIN_FRONTIER_SIZE)
             {
                 frontiers.push_back(new_frontier);
-                ROS_INFO("Added frontier of size %d", new_frontier.size());
+                ROS_INFO("Added frontier of size %d", static_cast<int>(new_frontier.size()));
             }
 
             for (int i = 0; i < new_frontier.size(); i++) 
@@ -120,11 +120,11 @@ bool Wavefront_Detector::is_frontier_point(const nav_msgs::OccupancyGrid& map,
     int pos, int map_size, int map_width)
 {
     // point must not be in known region
-    if (map.data[point] != UNKNOWN) 
+    if (map.data[pos] != UNKNOWN) 
         return false;
     
     int nbors[NUM_NBORS];
-    pos_neighbours(nbors, pos, map_width);
+    pos_neighbors(nbors, pos, map_width);
     
     for (int i = 0; i < NUM_NBORS; i++)
     {
@@ -143,20 +143,22 @@ bool Wavefront_Detector::is_frontier_point(const nav_msgs::OccupancyGrid& map,
     return false;
 }
 
-int Wavefront_Detector::nearest_frontier_idx(const sensor_msgs::PointCloud& frontier_cloud)
+int Wavefront_Detector::nearest_frontier_idx(const std::vector<geometry_msgs::Point>& frontier_pos)
 {
     tf::TransformListener map_listener;
     tf::StampedTransform map_transform;
-    map_listener.waitForTransform("/map", "/odom", ros::Time(0), ros::Duration(3.0));
-    map_listener.lookupTransform("/map", "/odom", ros::Time(0), map_transform);
+    map_listener.waitForTransform("/map", "/base_link", ros::Time(0), ros::Duration(3.0));
+    map_listener.lookupTransform("/map", "/base_link", ros::Time(0), map_transform);
+    float cur_pos_x = map_transform.getOrigin().x();
+    float cur_pos_y = map_transform.getOrigin().y();
     
     int idx = 0;
     float closest_frontier_dist = std::numeric_limits<float>::infinity();
     
-    for (int i = 0; i < frontier_cloud.points.size(); i++) 
+    for (int i = 0; i < frontier_pos.size(); i++) 
     {
-        float dist = points_dist(frontier_cloud.points[i].x, map_transform.getOrigin().x(), 
-            frontier_cloud.points[i].y, map_transform.getOrigin().y());
+        float dist = points_dist(frontier_pos[i].x, cur_pos_x, 
+            frontier_pos[i].y, cur_pos_y);
 
         if (dist > 0.7 && dist <= closest_frontier_dist) 
         {

@@ -6,6 +6,8 @@
 #include <map>
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 
 // definitions
 #define UNKNOWN -1 // occupancy unknown
@@ -31,7 +33,7 @@ class Wavefront_Detector
     ~Wavefront_Detector() {};
     std::vector<std::vector<int>> frontiers(const nav_msgs::OccupancyGrid& map, 
         int map_height, int map_width, int pose);
-    int nearest_frontier_idx(const sensor_msgs::PointCloud& frontier_cloud);
+    int nearest_frontier_idx(const std::vector<geometry_msgs::Point>& frontier_pos);
     int frontier_median(std::vector<int> frontier);
 };
 

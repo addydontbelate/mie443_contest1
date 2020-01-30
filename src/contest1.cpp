@@ -1,6 +1,7 @@
 #include <ros/console.h>
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Quaternion.h>
 #include <kobuki_msgs/BumperEvent.h>
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
@@ -14,7 +15,7 @@
 #include "visualizer.h"
 
 // defintiions and global constants
-#define NUM_BUMPER(3) // LEFT, CENTER, RIGHT
+#define NUM_BUMPER (3) // LEFT, CENTER, RIGHT
 #define RAD2DEG(rad) ((rad) * 180./M_PI)
 #define DEG2RAD(deg) ((deg) * M_PI/180.)
 #define TIME_LIMIT 480 // seconds
@@ -43,6 +44,10 @@ uint8_t bumper[3] = {kobuki_msgs::BumperEvent::RELEASED,
                     kobuki_msgs::BumperEvent::RELEASED, 
                     kobuki_msgs::BumperEvent::RELEASED};
 
+// objects
+Wavefront_Detector wfd;
+Visualizer viz;
+Navigator nav;
 
 // callback functions
 void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
@@ -84,48 +89,47 @@ void odom_callback(const nav_msgs::Odometry::ConstPtr& msg)
     yaw = tf::getYaw(msg->pose.pose.orientation);
 }
 
-void map_callback(const nav_msgs::OccupancyGrid::ConstPtr& map)
+void map_callback(const nav_msgs::OccupancyGrid& map)
 {
-    float resolution = map->info.resolution;
-    float map_x = map->info.origin.position.x/resolution;
-    float map_y = map->info.origin.position.y/resolution;
+    float resolution = map.info.resolution;
+    float map_x = map.info.origin.position.x/resolution;
+    float map_y = map.info.origin.position.y/resolution;
     float x = 0. - map_x;
     float y = 0. - map_y;
 
     if (detect_frontier)
     {
         // get frontiers
-        std::vector<std::vector<int>> frontiers = this->wfd(map, map->info.height, 
-            map->info.width, x + (y * map->info.width));
-        ROS_INFO("Found $d frontiers", frontiers.size());
+        std::vector<std::vector<int>> frontiers = wfd.frontiers(map, map.info.height, 
+            map.info.width, x + (y * map.info.width));
+        ROS_INFO("Found %d frontiers", static_cast<int>(frontiers.size()));
 
         // visualize frontiers
-        // std::vector<std::vector<int>> map_2d(map->info.height, std::vector<int>(map->info.width, 0));
+        // std::vector<std::vector<int>> map_2d(map->info.height, std::vector<int>(map->info.width, 0)); // print to file
 
         // get frontier medians
-        std::vector<int> frontier_medians;
+        std::vector<int> frontier_median;
         for (int i = 0; i < frontiers.size(); i++)
-            frontier_medians.push_back(frontier_median(frontiers[i]));
+            frontier_median.push_back(wfd.frontier_median(frontiers[i]));
 
-        // point cloud for corresponding locations of medians on map
-        sensor_msgs::PointCloud frontiers_cloud;
-        frontier_cloud.points.resize(frontier_medians.size());
-        for (int i = 0; i < frontier_medians.size(); i++) 
+        // corresponding position of median on map
+        std::vector<geometry_msgs::Point> frontier_pos(frontier_median.size());
+        
+        for (int i = 0; i < frontier_median.size(); i++)
         {
-            frontier_cloud.points[i].x =
-                ((frontierMedians[i] % map->info.width) + map_x)*resolution;
-            frontier_cloud.points[i].y =
-                ((frontierMedians[i] / map->info.width) + map_y)*resolution;
-            frontier_cloud.points[i].z = 0;
+            frontier_pos[i].x = ((frontier_median[i] % map.info.width) + map_x)*resolution;
+            frontier_pos[i].y = ((frontier_median[i] / map.info.width) + map_y)*resolution;
+            frontier_pos[i].z = 0;
         }
 
         // get nearest frontier
-        int nf_idx = wfd.nearest_frontier_idx(frontier_cloud);
+        int nf_idx = wfd.nearest_frontier_idx(frontier_pos);
         ROS_INFO("Nearest frontier index is: %d", nf_idx);
 
         //  update goal position
-        goal_pos_x = frontier_cloud.points[nf_idx].x;
-        goal_pos_y = frontier_cloud.points[nf_idx].y;
+        goal_pos_x = frontier_pos[nf_idx].x;
+        goal_pos_y = frontier_pos[nf_idx].y;
+        ROS_INFO("Goal position set to: (%f, %f)", goal_pos_x, goal_pos_y);
 
         detect_frontier = false; // set to true when needing a new frontier
     }
@@ -147,11 +151,6 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(10);
 
     geometry_msgs::Twist vel;
-
-    // objects
-    Wavefront_Detector wfd;
-    Visualizer viz;
-    Navigator nav;
 
     // contest count down timer
     std::chrono::time_point<std::chrono::system_clock> start;
@@ -204,8 +203,8 @@ int main(int argc, char **argv)
 
         
         // publish next move
-        vel.angular.z = nav.angular_vel;
-        vel.linear.x = nav.linear_vel;
+        vel.angular.z = nav.get_angular_vel();
+        vel.linear.x = nav.get_linear_vel();
         vel_pub.publish(vel);
 
         // update the timer.
