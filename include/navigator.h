@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <cmath>
+#include <chrono>
 #include "wavefront_detector.h"
 
 #define OPEN_ENV_VEL 0.25 // [m/s]
@@ -23,6 +24,8 @@ extern int32_t view_angle; // +-5 deg from heading angle
 extern bool detect_frontier; // wfd enable flag
 extern bool bumper_hit; // recovery mode flag
 extern uint8_t bumper[3];
+extern geometry_msgs::Twist rob_vel;
+extern ros::Publisher vel_pub;
 
 // objects
 extern Wavefront_Detector wfd;
@@ -39,8 +42,9 @@ class Navigator
     float get_linear_vel() {return linear_vel;}
     
     // commands
-    void stop() {angular_vel = 0.0; linear_vel = 0.0;}
+    void stop() {rob_vel.angular.z = 0.0; rob_vel.linear.x = 0.0; vel_pub.publish(rob_vel);}
     void move_to_goal_point(float goal_x, float goal_y);
+    void rotate_once();
 
     // constructor and destructor
     Navigator() {angular_vel = 0.0; linear_vel = 0.0;}

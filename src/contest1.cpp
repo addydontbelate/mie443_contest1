@@ -43,6 +43,8 @@ bool bumper_hit = false; // recovery mode flag
 uint8_t bumper[3] = {kobuki_msgs::BumperEvent::RELEASED, 
                     kobuki_msgs::BumperEvent::RELEASED, 
                     kobuki_msgs::BumperEvent::RELEASED};
+geometry_msgs::Twist rob_vel;
+ros::Publisher vel_pub;
 
 // Objects
 
@@ -151,6 +153,7 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
         ROS_INFO("Goal position set to: (%f, %f)", goal_pos_x, goal_pos_y);
 
         detect_frontier = false; // set to true when needing a new frontier
+        rob_state = _NAV_TO_FRONTIER_;
     }
 }
 
@@ -166,11 +169,9 @@ int main(int argc, char **argv)
     ros::Subscriber odom_sub = nh.subscribe("odom", 1, &odom_callback);
     ros::Subscriber map_sub = nh.subscribe("map", 1, &map_callback);
 
-    ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
+    vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
 
     ros::Rate loop_rate(10);
-
-    geometry_msgs::Twist vel;
 
     // contest count down timer
     std::chrono::time_point<std::chrono::system_clock> start;
@@ -198,10 +199,9 @@ int main(int argc, char **argv)
         if (rob_state == _INIT_)
         {
             ROS_INFO("Robot in INIT state");
-            ; // rot 360;
-            detect_frontier = true;
-
-            nav.move_to_goal_point(1,1);
+            nav.rotate_once();
+            rob_state = _GET_NEW_FRONTIER_;
+            // detect_frontier = true;
         }
         else if (rob_state == _RECOVERY_)
         {
@@ -212,11 +212,14 @@ int main(int argc, char **argv)
         {
             ROS_INFO("Robot in GET_NEW_FRONTIER state");
             ; //
+            rob_state = _NAV_TO_FRONTIER_;
         }
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
             ROS_INFO("Robot in NAV_TO_FRONTIER state");
-            ; //
+            // nav.move_to_goal_point(goal_pos_x, goal_pos_y); //
+            nav.move_to_goal_point(1, 1); //
+            return 0;
         }
         else // invalid state stored
         {
@@ -227,9 +230,9 @@ int main(int argc, char **argv)
 
         
         // publish next move
-        vel.angular.z = nav.get_angular_vel();
-        vel.linear.x = nav.get_linear_vel();
-        vel_pub.publish(vel);
+        // rob_vel.angular.z = nav.get_angular_vel();
+        // rob_vel.linear.x = nav.get_linear_vel();
+        // vel_pub.publish(vel);
 
         // update the timer.
         seconds_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start).count();
