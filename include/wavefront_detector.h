@@ -18,7 +18,7 @@
 #define MAP_CLOSE_LIST 2
 #define FRONTIER_OPEN_LIST 3
 #define FRONTIER_CLOSE_LIST 4
-#define MIN_FRONTIER_SIZE 2
+#define MIN_FRONTIER_SIZE 5
 #define NUM_NBORS 8 // # neighbors of each cell
 
 class Wavefront_Detector 
