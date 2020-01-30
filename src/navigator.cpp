@@ -16,7 +16,14 @@ void Navigator::rotate_once()
     }
 
     stop();
+}
 
+void Navigator::Navigator(ros::Publisher vel_pub)
+{   
+    // Default values
+    angular_vel = 0.0; 
+    linear_vel = 0.0;
+    vel_pub = vel_pub;
 }
 
 void Navigator::move_to_goal_point(float goal_x, float goal_y) 
