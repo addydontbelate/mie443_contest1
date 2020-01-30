@@ -44,12 +44,18 @@ uint8_t bumper[3] = {kobuki_msgs::BumperEvent::RELEASED,
                     kobuki_msgs::BumperEvent::RELEASED, 
                     kobuki_msgs::BumperEvent::RELEASED};
 
-// objects
+// Objects
+
 Wavefront_Detector wfd;
 Visualizer viz;
 Navigator nav;
 
-// callback functions
+// Callback functions
+
+/**
+ * ROS callback to globally record bumper hit.
+ */
+
 void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
 	bumper[msg->bumper] = msg->state;
@@ -61,6 +67,10 @@ void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
         bumper_hit = true; // set flag
     }
 }
+
+/**
+ * ROS callback to set global laser distance given readings.
+ */
 
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
@@ -82,12 +92,21 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     }
 }
 
+/**
+ * ROS callback to set the position of the robot's global vairables.
+ */
+
 void odom_callback(const nav_msgs::Odometry::ConstPtr& msg)
 {
+    
     rob_pos_x = msg->pose.pose.position.x; 
     rob_pos_y = msg->pose.pose.position.y;
     yaw = tf::getYaw(msg->pose.pose.orientation);
 }
+
+/**
+ * ROS callback to globally update frontier detector
+ */
 
 void map_callback(const nav_msgs::OccupancyGrid& map)
 {
@@ -135,6 +154,7 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
     }
 }
 
+/* ROS Loop */
 
 int main(int argc, char **argv)
 {
@@ -156,6 +176,8 @@ int main(int argc, char **argv)
     std::chrono::time_point<std::chrono::system_clock> start;
     start = std::chrono::system_clock::now();
     uint64_t seconds_elapsed = 0;
+
+    // Begin robot processing loop
 
     while(ros::ok() && addydontbelate(seconds_elapsed)) 
     {
