@@ -66,7 +66,6 @@ Visualizer viz;
 /**
  * ROS callback to record bumper hit.
  */
-
 void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
 	bumper[msg->bumper] = msg->state;
@@ -82,7 +81,6 @@ void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 /**
  * ROS callback to set minimum distance from laser over view angle.
  */
-
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
 	min_laser_dist = std::numeric_limits<float>::infinity(); 
@@ -236,7 +234,7 @@ int main(int argc, char **argv)
         {
             ROS_INFO("Robot in NAV_TO_FRONTIER state");
             nav.move_to(goal_pos_x, goal_pos_y);
-            rob_state = _INIT_; // repeat process 
+            rob_state = _INIT_;
         }
         else // invalid state stored
         {
@@ -245,7 +243,7 @@ int main(int argc, char **argv)
             nav.stop(); // stop robot movement
         }
 
-        // update the timer.
+        // update the timer
         seconds_elapsed = TIME_S(CLOCK::now()-start).count();
         loop_rate.sleep();
     }
