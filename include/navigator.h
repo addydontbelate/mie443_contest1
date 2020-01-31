@@ -44,13 +44,8 @@ class Navigator
     float get_angular_vel() {return angular_vel;}
     float get_linear_vel() {return linear_vel;}
     
-<<<<<<< HEAD
-    // commands
-    void stop() {rob_vel.angular.z = 0.0; rob_vel.linear.x = 0.0; vel_pub.publish(rob_vel);}
-=======
     // Commands
     void stop() {angular_vel = 0.0; linear_vel = 0.0;}
->>>>>>> 7cb2e13da8d87148b79dcd5b27dce97c2a9ac33a
     void move_to_goal_point(float goal_x, float goal_y);
     void rotate_once();
 

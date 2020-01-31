@@ -168,12 +168,6 @@ ros::Publisher setup_ros()
     ros::Subscriber laser_sub = nh.subscribe("scan", 10, &laser_callback);
     ros::Subscriber odom_sub = nh.subscribe("odom", 1, &odom_callback);
     ros::Subscriber map_sub = nh.subscribe("map", 1, &map_callback);
-<<<<<<< HEAD
-
-    vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
-
-    ros::Rate loop_rate(10);
-=======
     ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
 
     ros::Rate loop_rate(10);
@@ -187,7 +181,6 @@ int main(int argc, char **argv)
     // Setup ROS + Navigator
     vel_pub = setup_ros();
     Navigator Nav(vel_pub);
->>>>>>> 7cb2e13da8d87148b79dcd5b27dce97c2a9ac33a
 
     // contest count down timer
     std::chrono::time_point<std::chrono::system_clock> start;
@@ -215,17 +208,11 @@ int main(int argc, char **argv)
         if (rob_state == _INIT_)
         {
             ROS_INFO("Robot in INIT state");
-<<<<<<< HEAD
-            nav.rotate_once();
-            rob_state = _GET_NEW_FRONTIER_;
-            // detect_frontier = true;
-=======
             ; 
             // rot 360;
             detect_frontier = true;
 
             Nav.move_to_goal_point(1,1);
->>>>>>> 7cb2e13da8d87148b79dcd5b27dce97c2a9ac33a
         }
         else if (rob_state == _RECOVERY_)
         {
@@ -253,16 +240,10 @@ int main(int argc, char **argv)
         }
 
         // publish next move
-<<<<<<< HEAD
-        // rob_vel.angular.z = nav.get_angular_vel();
-        // rob_vel.linear.x = nav.get_linear_vel();
-        // vel_pub.publish(vel);
-=======
         // move_time = move_time
         vel.angular.z = Nav.get_angular_vel();
         vel.linear.x = Nav.get_linear_vel();
         vel_pub.publish(vel);
->>>>>>> 7cb2e13da8d87148b79dcd5b27dce97c2a9ac33a
 
         // update the timer.
         seconds_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start).count();
