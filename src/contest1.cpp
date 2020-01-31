@@ -234,7 +234,7 @@ int main(int argc, char **argv)
         {
             ROS_INFO("Robot in NAV_TO_FRONTIER state");
             nav.move_to(goal_pos_x, goal_pos_y);
-            rob_state = _INIT_;
+            rob_state = _INIT_; // repeat process
         }
         else // invalid state stored
         {

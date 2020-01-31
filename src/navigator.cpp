@@ -2,12 +2,14 @@
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
-	nav_msgs::Odometry initial_pose = rob_pose;
+	float initial_yaw = rob_yaw;
 
     if (clockwise)
         angular_vel = -fabs(angular_vel);
     else
         angular_vel = fabs(angular_vel);
+
+    linear_vel = 0.0;
 
 	float angle_turned = 0.0;
     ros::Rate loop_rate(10);
@@ -18,7 +20,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 		ros::spinOnce();
 		loop_rate.sleep();
 		
-        angle_turned = abs(rob_yaw - tf::getYaw(rob_pose.pose.pose.orientation));
+        angle_turned = abs(rob_yaw - initial_yaw);
 	}
     
     stop();
@@ -27,13 +29,16 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 void Navigator::move_straight(float dist, float linear_speed, bool forward)
 {
 	//initial pose before moving
-	nav_msgs::Odometry initial_pose = rob_pose;
+	float initial_pos_x = rob_pos_x;
+    float initial_pos_y = rob_pos_y;
 
 	if (forward)
 		linear_vel = fabs(linear_speed); // positive for forward
 	else
 		linear_vel = -fabs(linear_speed); // nagtive for backwards
 	
+    angular_vel = 0.0;
+
 	float dist_moved = 0.0;
 	ros::Rate loop_rate(10);
 
@@ -43,8 +48,8 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 		ros::spinOnce();
 		loop_rate.sleep();
 		
-        dist_moved = sqrt(pow((rob_pos_x - initial_pose.pose.pose.position.x), 2) +
-			pow((rob_pos_y - initial_pose.pose.pose.position.y), 2));
+        dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
+			pow((rob_pos_y - initial_pos_y), 2));
 	}
 
 	stop();
