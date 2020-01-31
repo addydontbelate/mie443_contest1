@@ -1,62 +1,92 @@
 #include "navigator.h"
 
-void Navigator::rotate_once()
+void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
-    std::chrono::time_point<std::chrono::system_clock> start;
-    start = std::chrono::system_clock::now();
-    uint64_t seconds_elapsed = 0;
-    
-    while (seconds_elapsed < 10000/*2*M_PI/MAX_ANG_VEL*/)
-    {
-        angular_vel = MAX_ANG_VEL;
-        rob_vel.angular.z = angular_vel;
-        rob_vel.linear.x = linear_vel;
-        vel_pub.publish(rob_vel);
-        seconds_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start).count();
-    }
+	nav_msgs::Odometry initial_pose = rob_pose;
 
+    if (clockwise)
+        angular_vel = -fabs(angular_vel);
+    else
+        angular_vel = fabs(angular_vel);
+
+	float angle_turned = 0.0;
+    ros::Rate loop_rate(10);
+	
+    while (angle_turned < rad && ros::ok())
+    {
+		publish_move();
+		ros::spinOnce();
+		loop_rate.sleep();
+		
+        angle_turned = abs(rob_yaw - tf::getYaw(rob_pose.pose.pose.orientation));
+	}
+    
     stop();
 }
 
-void Navigator::Navigator(ros::Publisher vel_pub)
-{   
-    // Default values
-    angular_vel = 0.0; 
-    linear_vel = 0.0;
-    vel_pub = vel_pub;
+void Navigator::move_straight(float dist, float linear_speed, bool forward)
+{
+	//initial pose before moving
+	nav_msgs::Odometry initial_pose = rob_pose;
+
+	if (forward)
+		linear_vel = fabs(linear_speed); // positive for forward
+	else
+		linear_vel = -fabs(linear_speed); // nagtive for backwards
+	
+	float dist_moved = 0.0;
+	ros::Rate loop_rate(10);
+
+	while (dist_moved < dist && ros::ok())
+    {
+		publish_move();
+		ros::spinOnce();
+		loop_rate.sleep();
+		
+        dist_moved = sqrt(pow((rob_pos_x - initial_pose.pose.pose.position.x), 2) +
+			pow((rob_pos_y - initial_pose.pose.pose.position.y), 2));
+	}
+
+	stop();
 }
 
-void Navigator::move_to_goal_point(float goal_x, float goal_y) 
+void Navigator::move_to(float goal_x, float goal_y) 
 {
-    //  count down timer
-    std::chrono::time_point<std::chrono::system_clock> start;
-    start = std::chrono::system_clock::now();
-    uint64_t seconds_elapsed = 0;
+    // rotate towards goal
+    float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
-    // Loop until the robot is close to the desired x & y coordinates
-    while (seconds_elapsed < 10000 && abs(goal_x-rob_pos_x) > 0.1 && abs(goal_y-rob_pos_y) > 0.1) 
-    {
-        // Calculate the x & y increments and required angle of rotation
-        float inc_x = goal_x - rob_pos_x;
-        float inc_y = goal_y - rob_pos_y;
-        float goal_yaw = atan2(inc_y, inc_x);
-
-        // Orient then move
-        if (abs(goal_yaw-yaw) > 0.1) 
-        {
-            angular_vel = MAX_ANG_VEL;
-            linear_vel = 0.0;
-        }
-        else 
-        {
-            angular_vel = 0;
-            linear_vel = OPEN_ENV_VEL;
-        }
-
-        rob_vel.angular.z = angular_vel;
-        rob_vel.linear.x = linear_vel;
-        vel_pub.publish(rob_vel);
-
-        seconds_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start).count();
+    if (goal_y > 0) // goal ccw
+    {  
+        if (rob_yaw > 0)
+            (rob_yaw - m_angle > 0) ? rotate(rob_yaw - m_angle, MAX_ANG_VEL, CW) : 
+                rotate(m_angle - rob_yaw, MAX_ANG_VEL, CCW);
+        else
+            rotate(m_angle + rob_yaw, MAX_ANG_VEL, CCW);
     }
+    else // goal cw
+    {
+        if (rob_yaw < 0)
+            (rob_yaw - m_angle < 0) ? rotate(fabs(rob_yaw - m_angle), MAX_ANG_VEL, CCW) : 
+                rotate(fabs(m_angle - rob_yaw), MAX_ANG_VEL, CW);
+        else
+            rotate(m_angle + rob_yaw, MAX_ANG_VEL, CW);
+    }
+
+    // move straight to goal
+    float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
+    move_straight(dist, FREE_ENV_VEL, FWD);
+}
+
+void Navigator::stop()
+{
+    rob_vel.angular.z = 0.0; 
+    rob_vel.linear.x = 0.0; 
+    publish_move();
+}
+
+void Navigator::publish_move() 
+{
+    rob_vel.angular.z = angular_vel;
+    rob_vel.linear.x = linear_vel;
+    vel_pub.publish(rob_vel);
 }

@@ -6,7 +6,10 @@
 #include <sensor_msgs/LaserScan.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <tf/tf.h>
 #include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <stdio.h>
 #include <cmath>
 #include <chrono>
@@ -14,10 +17,13 @@
 #include "navigator.h"
 #include "visualizer.h"
 
-// defintiions and global constants
-#define NUM_BUMPER (3) // LEFT, CENTER, RIGHT
-#define RAD2DEG(rad) ((rad) * 180./M_PI)
-#define DEG2RAD(deg) ((deg) * M_PI/180.)
+// global constants
+#define NUM_BUMPER 3 // LEFT, CENTER, RIGHT
+
+// timer macros
+#define TIME std::chrono::time_point<std::chrono::system_clock>
+#define CLOCK std::chrono::system_clock
+#define TIME_S std::chrono::duration_cast<std::chrono::seconds>
 #define TIME_LIMIT 480 // seconds
 #define addydontbelate(time_elapsed) ((time_elapsed <= TIME_LIMIT) ? true : false) 
 
@@ -29,32 +35,36 @@
 
 // global variables
 int rob_state = _INIT_;
+nav_msgs::Odometry rob_pose;
+float rob_yaw = 0.0;
 float rob_pos_x = 0.0;
 float rob_pos_y = 0.0;
 float goal_pos_x = rob_pos_x;
 float goal_pos_y = rob_pos_y;
-float yaw = 0.0;
 float min_laser_dist = std::numeric_limits<float>::infinity(); 
 int32_t n_lasers = 0;
 int32_t desired_n_lasers = 0; 
-int32_t view_angle = 5; // +-5 deg from heading angle
-bool detect_frontier = false; // wfd enable flag
-bool bumper_hit = false; // recovery mode flag
-uint8_t bumper[3] = {kobuki_msgs::BumperEvent::RELEASED, 
-                    kobuki_msgs::BumperEvent::RELEASED, 
-                    kobuki_msgs::BumperEvent::RELEASED};
+int32_t view_angle = 5;         // +-5 deg from heading angle
+bool detect_frontier = false;   // wfd enable flag
+bool bumper_hit = false;        // recovery mode flag
+uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
+    kobuki_msgs::BumperEvent::RELEASED, kobuki_msgs::BumperEvent::RELEASED};
+
+// ros publishers and subscribers
 geometry_msgs::Twist rob_vel;
 ros::Publisher vel_pub;
+ros::Subscriber odom_sub;
+ros::Subscriber laser_sub;
+ros::Subscriber bumper_sub;
+ros::Subscriber map_sub;
 
-// Objects
-
+// robot objects
+Navigator nav;
 Wavefront_Detector wfd;
 Visualizer viz;
 
-// Callback functions
-
 /**
- * ROS callback to globally record bumper hit.
+ * ROS callback to record bumper hit.
  */
 
 void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
@@ -70,7 +80,7 @@ void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 }
 
 /**
- * ROS callback to set global laser distance given readings.
+ * ROS callback to set minimum distance from laser over view angle.
  */
 
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
@@ -87,28 +97,26 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     } 
     else 
     {
-        // use full range if view angle > angle range
+        // use full range if view angle > laser range
         for (uint32_t laser_idx = 0; laser_idx < n_lasers; ++laser_idx) 
             min_laser_dist = std::min(min_laser_dist, msg->ranges[laser_idx]);
     }
 }
 
 /**
- * ROS callback to set the position of the robot's global vairables.
+ * ROS callback to update robot pose.
  */
-
 void odom_callback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-    
     rob_pos_x = msg->pose.pose.position.x; 
     rob_pos_y = msg->pose.pose.position.y;
-    yaw = tf::getYaw(msg->pose.pose.orientation);
+    rob_yaw = tf::getYaw(msg->pose.pose.orientation);
+    rob_pose = *(msg);
 }
 
 /**
- * ROS callback to globally update frontier detector
+ * ROS callback to update map and get desirable frontier's median.
  */
-
 void map_callback(const nav_msgs::OccupancyGrid& map)
 {
     float resolution = map.info.resolution;
@@ -147,65 +155,60 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
         ROS_INFO("Nearest frontier index is: %d", nf_idx);
 
         //  update goal position
-        goal_pos_x = frontier_pos[nf_idx].x;
-        goal_pos_y = frontier_pos[nf_idx].y;
-        ROS_INFO("Goal position set to: (%f, %f)", goal_pos_x, goal_pos_y);
+        if (!frontier_pos.empty())
+        {
+            goal_pos_x = frontier_pos[nf_idx].x;
+            goal_pos_y = frontier_pos[nf_idx].y;
+            ROS_INFO("Goal position set to: (%f, %f)", goal_pos_x, goal_pos_y);
+        }
+        else
+        {
+            goal_pos_x = rob_pos_x;
+            goal_pos_y = rob_pos_y;
+            ROS_INFO("Frontier not found! Goal set to: (%f, %f)", goal_pos_x, goal_pos_y);
+        }
 
         detect_frontier = false; // set to true when needing a new frontier
         rob_state = _NAV_TO_FRONTIER_;
     }
 }
 
-/* Initialize ROS */
-
-ros::Publisher setup_ros()
+int main(int argc, char **argv)
 {
-    ros::init (argc, argv, "auto_explorer");
+    ros::init(argc, argv, "addydontbelate_explorer");
     ros::NodeHandle nh;
 
-    // Subscribers
-    ros::Subscriber bumper_sub = nh.subscribe("mobile_base/events/bumper", 10, &bumper_callback);
-    ros::Subscriber laser_sub = nh.subscribe("scan", 10, &laser_callback);
-    ros::Subscriber odom_sub = nh.subscribe("odom", 1, &odom_callback);
-    ros::Subscriber map_sub = nh.subscribe("map", 1, &map_callback);
-<<<<<<< HEAD
+    // init subscribers
+    bumper_sub = nh.subscribe("mobile_base/events/bumper", 10, &bumper_callback);
+    laser_sub = nh.subscribe("scan", 10, &laser_callback);
+    odom_sub = nh.subscribe("odom", 1, &odom_callback);
+    map_sub = nh.subscribe("map", 1, &map_callback);
 
+    // init publishers
     vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
 
+    // init loop rate
     ros::Rate loop_rate(10);
-=======
-    ros::Publisher vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
-
-    ros::Rate loop_rate(10);
-    geometry_msgs::Twist vel;
-
-    return vel_pub;
-}
-
-int main(int argc, char **argv)
-{   
-    // Setup ROS + Navigator
-    vel_pub = setup_ros();
-    Navigator Nav(vel_pub);
->>>>>>> 7cb2e13da8d87148b79dcd5b27dce97c2a9ac33a
 
     // contest count down timer
-    std::chrono::time_point<std::chrono::system_clock> start;
-    start = std::chrono::system_clock::now();
+    TIME start = CLOCK::now();
     uint64_t seconds_elapsed = 0;
 
-    // Begin robot processing loop
-
+    // robot loop
     while(ros::ok() && addydontbelate(seconds_elapsed)) 
     {
+        // update robot vars
         ros::spinOnce();
         ROS_INFO("Position: (%f, %f); Orientation: %f deg; Min Laser Dist: %f;", 
-            rob_pos_x, rob_pos_y, RAD2DEG(yaw), min_laser_dist);
+            rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), min_laser_dist);
+
+        // TODO: add 360 rot every 10-20 seconds!
 
         // unexpected hit
         if (bumper_hit)
         {
-            ; // initiate recovery mode.
+            // TODO: add code here
+            ; // initiate recovery mode: move away from hit.
 
             rob_state = _RECOVERY_;
             bumper_hit = false; // reset flag
@@ -215,57 +218,35 @@ int main(int argc, char **argv)
         if (rob_state == _INIT_)
         {
             ROS_INFO("Robot in INIT state");
-<<<<<<< HEAD
-            nav.rotate_once();
+            nav.rotate(DEG2RAD(360), MAX_ANG_VEL, CW);
             rob_state = _GET_NEW_FRONTIER_;
-            // detect_frontier = true;
-=======
-            ; 
-            // rot 360;
             detect_frontier = true;
-
-            Nav.move_to_goal_point(1,1);
->>>>>>> 7cb2e13da8d87148b79dcd5b27dce97c2a9ac33a
         }
         else if (rob_state == _RECOVERY_)
         {
             ROS_INFO("Robot in RECOVERY state");
-            rob_state = _INIT_; // also make robot move away from obst
+            rob_state = _INIT_;
         }
         else if (rob_state == _GET_NEW_FRONTIER_)
         {
             ROS_INFO("Robot in GET_NEW_FRONTIER state");
-            ; //
             rob_state = _NAV_TO_FRONTIER_;
         }
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
             ROS_INFO("Robot in NAV_TO_FRONTIER state");
-            // nav.move_to_goal_point(goal_pos_x, goal_pos_y); //
-            nav.move_to_goal_point(1, 1); //
-            return 0;
+            nav.move_to(goal_pos_x, goal_pos_y);
+            rob_state = _INIT_; // repeat process 
         }
         else // invalid state stored
         {
             ROS_INFO("Robot in INVALID state! Starting RECOVERY");
             rob_state = _RECOVERY_;
-            Nav.stop(); // stop robot movement
+            nav.stop(); // stop robot movement
         }
 
-        // publish next move
-<<<<<<< HEAD
-        // rob_vel.angular.z = nav.get_angular_vel();
-        // rob_vel.linear.x = nav.get_linear_vel();
-        // vel_pub.publish(vel);
-=======
-        // move_time = move_time
-        vel.angular.z = Nav.get_angular_vel();
-        vel.linear.x = Nav.get_linear_vel();
-        vel_pub.publish(vel);
->>>>>>> 7cb2e13da8d87148b79dcd5b27dce97c2a9ac33a
-
         // update the timer.
-        seconds_elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now()-start).count();
+        seconds_elapsed = TIME_S(CLOCK::now()-start).count();
         loop_rate.sleep();
     }
 

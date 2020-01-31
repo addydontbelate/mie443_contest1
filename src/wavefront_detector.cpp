@@ -13,7 +13,6 @@ void Wavefront_Detector::pos_neighbors(int nbor[], int pos, int map_width)
     nbor[7] = pos + map_width + 1;
 }
 
-
 std::vector<std::vector<int>> Wavefront_Detector::frontiers(const nav_msgs::OccupancyGrid& map, 
     int map_height, int map_width, int pose)
 {
@@ -114,7 +113,6 @@ std::vector<std::vector<int>> Wavefront_Detector::frontiers(const nav_msgs::Occu
 
     return frontiers;
 }
-
 
 bool Wavefront_Detector::is_frontier_point(const nav_msgs::OccupancyGrid& map, 
     int pos, int map_size, int map_width)

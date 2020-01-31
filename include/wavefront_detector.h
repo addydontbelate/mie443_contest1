@@ -6,6 +6,8 @@
 #include <map>
 #include <ros/ros.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <tf/tf.h>
+#include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 
