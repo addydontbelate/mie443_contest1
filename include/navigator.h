@@ -2,11 +2,14 @@
 #define INCLUDE_NAVIGATOR_H
 
 #include <ros/ros.h>
+#include <ros/console.h>
 #include <tf/tf.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Quaternion.h>
 #include <cmath>
 #include <chrono>
 
@@ -25,40 +28,40 @@
 #define CW true
 #define CCW false
 
-// global variables
-extern nav_msgs::Odometry rob_pose;
+// global robot state variables
 extern float rob_yaw;
 extern float rob_pos_x;
 extern float rob_pos_y;
 extern float goal_pos_x;
 extern float goal_pos_y;
 extern bool bumper_hit;
-extern geometry_msgs::Twist rob_vel;
-extern ros::Publisher vel_pub;
-extern ros::Subscriber odom_sub;
 
 class Navigator
 {
  private:
-    float angular_vel;  // <= M_PI/6 [rad/s]
-    float linear_vel;   // <= 0.25 [m/s]
-    void publish_move();
+   float angular_vel;  // <= M_PI/6 [rad/s]
+   float linear_vel;   // <= 0.25 [m/s] 
+   
+   // robot velocity publisher
+   ros::Publisher vel_pub;
+   geometry_msgs::Twist rob_vel;
+   void publish_move();
 
  public:
-    // accessors
-    float get_angular_vel() {return angular_vel;}
-    float get_linear_vel() {return linear_vel;}
-    
-    // TODO: add bumper/obstacle avoidance to these functions!
-    // commands
-    void stop();
-    void move_to(float goal_x, float goal_y);
-    void move_straight(float dist, float linear_speed, bool forward);
-    void rotate(float rad, float angular_speed, bool clockwise);
+   // accessors
+   float get_angular_vel() {return angular_vel;}
+   float get_linear_vel() {return linear_vel;}
+   
+   // TODO: add bumper/obstacle avoidance to these functions!
+   // commands
+   void stop();
+   void move_to(float goal_x, float goal_y);
+   void move_straight(float dist, float linear_speed, bool forward);
+   void rotate(float rad, float angular_speed, bool clockwise);
 
-    // constructor and destructor
-    Navigator() {angular_vel = 0.0; linear_vel = 0.0;};
-    ~Navigator() {};
+   // constructor and destructor
+   Navigator();
+   ~Navigator() {};
 };
 
 #endif  // INCLUDE_NAVIGATOR_H

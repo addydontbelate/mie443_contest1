@@ -33,9 +33,8 @@
 #define _GET_NEW_FRONTIER_ 2
 #define _NAV_TO_FRONTIER_ 3
 
-// global variables
+// global robot state variables
 int rob_state = _INIT_;
-nav_msgs::Odometry rob_pose;
 float rob_yaw = 0.0;
 float rob_pos_x = 0.0;
 float rob_pos_y = 0.0;
@@ -49,14 +48,6 @@ bool detect_frontier = false;   // wfd enable flag
 bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
     kobuki_msgs::BumperEvent::RELEASED, kobuki_msgs::BumperEvent::RELEASED};
-
-// ros publishers and subscribers
-geometry_msgs::Twist rob_vel;
-ros::Publisher vel_pub;
-ros::Subscriber odom_sub;
-ros::Subscriber laser_sub;
-ros::Subscriber bumper_sub;
-ros::Subscriber map_sub;
 
 // robot objects
 Navigator nav;
@@ -109,7 +100,6 @@ void odom_callback(const nav_msgs::Odometry::ConstPtr& msg)
     rob_pos_x = msg->pose.pose.position.x; 
     rob_pos_y = msg->pose.pose.position.y;
     rob_yaw = tf::getYaw(msg->pose.pose.orientation);
-    rob_pose = *(msg);
 }
 
 /**
@@ -177,13 +167,10 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     // init subscribers
-    bumper_sub = nh.subscribe("mobile_base/events/bumper", 10, &bumper_callback);
-    laser_sub = nh.subscribe("scan", 10, &laser_callback);
-    odom_sub = nh.subscribe("odom", 1, &odom_callback);
-    map_sub = nh.subscribe("map", 1, &map_callback);
-
-    // init publishers
-    vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
+    ros::Subscriber bumper_sub = nh.subscribe("mobile_base/events/bumper", 10, &bumper_callback);
+    ros::Subscriber laser_sub = nh.subscribe("scan", 10, &laser_callback);
+    ros::Subscriber odom_sub = nh.subscribe("odom", 1, &odom_callback);
+    ros::Subscriber map_sub = nh.subscribe("map", 1, &map_callback);
 
     // init loop rate
     ros::Rate loop_rate(10);

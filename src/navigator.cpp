@@ -1,5 +1,18 @@
 #include "navigator.h"
 
+Navigator::Navigator()
+{
+    // init velocities
+    angular_vel = 0.0; 
+    linear_vel = 0.0;
+    rob_vel.angular.z = angular_vel;
+    rob_vel.linear.x = linear_vel;
+    
+    // init velocity publisher
+    ros::NodeHandle nh;
+    vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
+}
+
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
 	float initial_yaw = rob_yaw;
@@ -13,15 +26,14 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 
 	float angle_turned = 0.0;
     ros::Rate loop_rate(10);
-	publish_move();
+	
     while (angle_turned < rad && ros::ok())
     {
-		// publish_move();
+		publish_move();
 		ros::spinOnce();
 		loop_rate.sleep();
 		
-        angle_turned = abs(rob_yaw - initial_yaw);
-        ROS_INFO("angle turned: %f", angle_turned);
+        angle_turned = fabs(rob_yaw - initial_yaw);
 	}
     
     stop();
@@ -85,14 +97,13 @@ void Navigator::move_to(float goal_x, float goal_y)
 
 void Navigator::stop()
 {
-    rob_vel.angular.z = 0.0; 
-    rob_vel.linear.x = 0.0; 
+    rob_vel.angular.z = 0.0;
+    rob_vel.linear.x = 0.0;
     publish_move();
 }
 
 void Navigator::publish_move() 
 {
-    ROS_INFO("Publishing speeds: %f\t%f", angular_vel, linear_vel);
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     vel_pub.publish(rob_vel);
