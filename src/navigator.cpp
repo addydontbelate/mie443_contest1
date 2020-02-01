@@ -14,7 +14,7 @@ Navigator::Navigator(ros::NodeHandle* nh)
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
-	ROS_INFO("Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, rob_yaw);
+	ROS_INFO("Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
     
     float initial_yaw;
 
@@ -55,7 +55,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
     
     stop();
 
-    ROS_INFO("Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, rob_yaw);
+    ROS_INFO("Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
 }
 
 void Navigator::move_straight(float dist, float linear_speed, bool forward)
