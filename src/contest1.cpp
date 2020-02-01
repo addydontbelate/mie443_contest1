@@ -49,8 +49,11 @@ bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
     kobuki_msgs::BumperEvent::RELEASED, kobuki_msgs::BumperEvent::RELEASED};
 
+// ros global nodehandle
+ros::NodeHandle nh;
+
 // robot objects
-Navigator nav;
+Navigator nav(&nh);
 Wavefront_Detector wfd;
 Visualizer viz;
 
@@ -164,7 +167,6 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "addydontbelate_explorer");
-    ros::NodeHandle nh;
 
     // init subscribers
     ros::Subscriber bumper_sub = nh.subscribe("mobile_base/events/bumper", 10, &bumper_callback);
