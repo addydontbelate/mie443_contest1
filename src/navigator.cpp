@@ -5,22 +5,23 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 	float initial_yaw = rob_yaw;
 
     if (clockwise)
-        angular_vel = -fabs(angular_vel);
+        angular_vel = -fabs(angular_speed);
     else
-        angular_vel = fabs(angular_vel);
+        angular_vel = fabs(angular_speed);
 
     linear_vel = 0.0;
 
 	float angle_turned = 0.0;
     ros::Rate loop_rate(10);
-	
+	publish_move();
     while (angle_turned < rad && ros::ok())
     {
-		publish_move();
+		// publish_move();
 		ros::spinOnce();
 		loop_rate.sleep();
 		
         angle_turned = abs(rob_yaw - initial_yaw);
+        ROS_INFO("angle turned: %f", angle_turned);
 	}
     
     stop();
@@ -91,6 +92,7 @@ void Navigator::stop()
 
 void Navigator::publish_move() 
 {
+    ROS_INFO("Publishing speeds: %f\t%f", angular_vel, linear_vel);
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     vel_pub.publish(rob_vel);
