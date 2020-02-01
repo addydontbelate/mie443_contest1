@@ -14,7 +14,9 @@ Navigator::Navigator(ros::NodeHandle* nh)
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
-	float initial_yaw;
+	ROS_INFO("Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, rob_yaw);
+    
+    float initial_yaw;
 
     if (clockwise)
         angular_vel = -fabs(angular_speed);
@@ -52,6 +54,8 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
     }
     
     stop();
+
+    ROS_INFO("Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, rob_yaw);
 }
 
 void Navigator::move_straight(float dist, float linear_speed, bool forward)
@@ -85,7 +89,8 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 
 void Navigator::move_to(float goal_x, float goal_y) 
 {
-    ROS_INFO("Moving to (%f, %f)", goal_x, goal_y);
+    ROS_INFO("Currently at (%f, %f);\t Moving to (%f, %f);", rob_pos_x, rob_pos_y, goal_x, goal_y);
+
     // rotate towards goal
     float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
@@ -109,7 +114,34 @@ void Navigator::move_to(float goal_x, float goal_y)
     // move straight to goal
     float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
     move_straight(dist, FREE_ENV_VEL, FWD);
-    ROS_INFO("Moved to (%f, %f)", rob_pos_x, rob_pos_y);
+    
+    ROS_INFO("Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+}
+
+void Navigator::move_right(float dist, float linear_speed, float angular_speed)
+{
+    ROS_INFO("Currently at (%f, %f);", rob_pos_x, rob_pos_y);
+    rotate_right(angular_speed);
+    move_straight(dist, linear_speed, FWD);
+    ROS_INFO("Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+}
+
+void Navigator::move_left(float dist, float linear_speed, float angular_speed)
+{
+    ROS_INFO("Currently at (%f, %f);", rob_pos_x, rob_pos_y);
+    rotate_left(angular_speed);
+    move_straight(dist, linear_speed, FWD);
+    ROS_INFO("Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+}
+
+void Navigator::rotate_right(float angular_speed)
+{
+    rotate(DEG2RAD(90), angular_speed, CW);
+}
+
+void Navigator::rotate_left(float angular_speed)
+{
+    rotate(DEG2RAD(90), angular_speed, CCW);
 }
 
 void Navigator::stop()

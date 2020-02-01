@@ -190,15 +190,13 @@ int main(int argc, char **argv)
     {
         // update robot state vars
         ros::spinOnce();
-        ROS_INFO("Position: (%f, %f); Orientation: %f deg; Min Laser Dist: %f;", 
+        ROS_INFO("[MAIN] Position: (%f, %f);\tOrientation: %f deg;\tMin Laser Dist: %f;", 
             rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), min_laser_dist);
-
-        // TODO: add 360 rot every 10-20 seconds!
 
         // unexpected hit
         if (bumper_hit)
         {
-            // TODO: add code here
+            // TODO: add bunper response code here (make a function in nav)
             ; // initiate recovery mode: move away from hit.
 
             rob_state = _RECOVERY_;
@@ -226,8 +224,8 @@ int main(int argc, char **argv)
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
             ROS_INFO("Robot in NAV_TO_FRONTIER state");
+            nav.move_to(rob_pos_x + (int(rand()%3) - 1), rob_pos_y + (int(rand()%3) - 1));
             // nav.move_to(goal_pos_x, goal_pos_y);
-            nav.move_to(rob_pos_x + rand()%2, rob_pos_y + rand()%2);
             rob_state = _INIT_; // repeat process
         }
         else // invalid state stored

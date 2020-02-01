@@ -39,25 +39,27 @@ extern bool bumper_hit;
 class Navigator
 {
  private:
-   float angular_vel;  // <= M_PI/6 [rad/s]
-   float linear_vel;   // <= 0.25 [m/s] 
-   
-   // robot velocity publisher
-   ros::Publisher vel_pub;
-   geometry_msgs::Twist rob_vel;
-   void publish_move();
+  float angular_vel;  // <= M_PI/6 [rad/s]
+  float linear_vel;   // <= 0.25 [m/s] 
+  
+  // robot velocity publisher
+  ros::Publisher vel_pub;
+  geometry_msgs::Twist rob_vel;
+  void publish_move();
 
  public:
-   // accessors
-   float get_angular_vel() {return angular_vel;}
-   float get_linear_vel() {return linear_vel;}
-   
-   // TODO: add bumper/obstacle avoidance to these functions!
-   // commands
-   void stop();
-   void move_to(float goal_x, float goal_y);
-   void move_straight(float dist, float linear_speed, bool forward);
-   void rotate(float rad, float angular_speed, bool clockwise);
+  // TODO: add bumper and obstacle avoidance to move_straight() & rotate() 
+  // (as a part of nav public functions)
+
+  // commands
+  void stop();
+  void move_to(float goal_x, float goal_y);
+  void move_straight(float dist, float linear_speed, bool forward);
+  void move_right(float dist, float linear_speed, float angular_speed);
+  void move_left(float dist, float linear_speed, float angular_speed);
+  void rotate(float rad, float angular_speed, bool clockwise);
+  void rotate_right(float angular_speed);
+  void rotate_left(float angular_speed);
 
    // constructor and destructor
    Navigator(ros::NodeHandle* nh);
