@@ -49,8 +49,9 @@ bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
     kobuki_msgs::BumperEvent::RELEASED, kobuki_msgs::BumperEvent::RELEASED};
 
-// ros global nodehandle
+// ros global nodehandle and custom visualizer
 ros::NodeHandle nh;
+Visualizer viz;
 
 /**
  * ROS callback to record bumper hit.
@@ -113,8 +114,8 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
 
     if (detect_frontier)
     {
-        // initi detector object
-        Wavefront_Detector wfd(&nh);
+        // init detector object
+        Wavefront_Detector wfd;
 
         // get frontiers
         std::vector<std::vector<int>> frontiers = wfd.frontiers(map, map.info.height, 
@@ -122,7 +123,7 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
         ROS_INFO("Found %d frontiers", static_cast<int>(frontiers.size()));
 
         // visualize frontiers
-        wfd.visualize(&frontiers);
+        viz.visualize_frontier();
 
         // get frontier medians
         std::vector<int> frontier_median;

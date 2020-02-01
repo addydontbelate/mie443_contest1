@@ -1,15 +1,5 @@
 #include "wavefront_detector.h"
 
-Wavefront_detector::Wavefront_Detector(ros::NodeHandle* nh)
-{
-    ; // publish visualizer topic for viz object
-}
-
-void Wavefront_detector::visualize(std::vector<std::vector<int>>* frontiers)
-{
-    ;
-}
-
 void Wavefront_Detector::pos_neighbors(int nbor[], int pos, int map_width)
 {
     nbor[0] = pos - map_width - 1;
