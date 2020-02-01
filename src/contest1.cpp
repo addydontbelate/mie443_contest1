@@ -183,11 +183,12 @@ int main(int argc, char **argv)
     // contest count down timer
     TIME start = CLOCK::now();
     uint64_t seconds_elapsed = 0;
+    srand(time(0)); // random walk
 
     // robot loop
     while(ros::ok() && addydontbelate(seconds_elapsed)) 
     {
-        // update robot vars
+        // update robot state vars
         ros::spinOnce();
         ROS_INFO("Position: (%f, %f); Orientation: %f deg; Min Laser Dist: %f;", 
             rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), min_laser_dist);
@@ -210,7 +211,7 @@ int main(int argc, char **argv)
             ROS_INFO("Robot in INIT state");
             nav.rotate(DEG2RAD(360), MAX_ANG_VEL, CW);
             rob_state = _GET_NEW_FRONTIER_;
-            detect_frontier = true;
+            // detect_frontier = true;
         }
         else if (rob_state == _RECOVERY_)
         {
@@ -225,7 +226,8 @@ int main(int argc, char **argv)
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
             ROS_INFO("Robot in NAV_TO_FRONTIER state");
-            nav.move_to(goal_pos_x, goal_pos_y);
+            // nav.move_to(goal_pos_x, goal_pos_y);
+            nav.move_to(rob_pos_x + rand()%2, rob_pos_y + rand()%2);
             rob_state = _INIT_; // repeat process
         }
         else // invalid state stored

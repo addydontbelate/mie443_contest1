@@ -14,7 +14,7 @@ Navigator::Navigator(ros::NodeHandle* nh)
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
-	float initial_yaw = rob_yaw;
+	float initial_yaw;
 
     if (clockwise)
         angular_vel = -fabs(angular_speed);
@@ -26,14 +26,30 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 	float angle_turned = 0.0;
     ros::Rate loop_rate(10);
 	
-    while (angle_turned < rad && ros::ok())
+    if (rad < M_PI)
+        while (angle_turned < rad && ros::ok())
+        {
+            initial_yaw = rob_yaw;
+            publish_move();
+            ros::spinOnce();
+            loop_rate.sleep();
+            
+            angle_turned += fabs(rob_yaw - initial_yaw);
+        }
+    else
     {
-		publish_move();
-		ros::spinOnce();
-		loop_rate.sleep();
-		
-        angle_turned = fabs(rob_yaw - initial_yaw);
-	}
+        while (angle_turned < M_PI && ros::ok())
+        {
+            initial_yaw = rob_yaw;
+            publish_move();
+            ros::spinOnce();
+            loop_rate.sleep();
+            
+            angle_turned += fabs(rob_yaw - initial_yaw);
+        }
+
+        rotate(rad-M_PI, angular_speed, clockwise);
+    }
     
     stop();
 }
@@ -69,6 +85,7 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 
 void Navigator::move_to(float goal_x, float goal_y) 
 {
+    ROS_INFO("Moving to (%f, %f)", goal_x, goal_y);
     // rotate towards goal
     float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
@@ -92,6 +109,7 @@ void Navigator::move_to(float goal_x, float goal_y)
     // move straight to goal
     float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
     move_straight(dist, FREE_ENV_VEL, FWD);
+    ROS_INFO("Moved to (%f, %f)", rob_pos_x, rob_pos_y);
 }
 
 void Navigator::stop()
