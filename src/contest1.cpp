@@ -52,11 +52,6 @@ uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED,
 // ros global nodehandle
 ros::NodeHandle nh;
 
-// robot objects
-Navigator nav(&nh);
-Wavefront_Detector wfd;
-Visualizer viz;
-
 /**
  * ROS callback to record bumper hit.
  */
@@ -118,13 +113,16 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
 
     if (detect_frontier)
     {
+        // initi detector object
+        Wavefront_Detector wfd(&nh);
+
         // get frontiers
         std::vector<std::vector<int>> frontiers = wfd.frontiers(map, map.info.height, 
             map.info.width, x + (y * map.info.width));
         ROS_INFO("Found %d frontiers", static_cast<int>(frontiers.size()));
 
         // visualize frontiers
-        // std::vector<std::vector<int>> map_2d(map->info.height, std::vector<int>(map->info.width, 0)); // print to file
+        wfd.visualize(&frontiers);
 
         // get frontier medians
         std::vector<int> frontier_median;
@@ -173,6 +171,9 @@ int main(int argc, char **argv)
     ros::Subscriber laser_sub = nh.subscribe("scan", 10, &laser_callback);
     ros::Subscriber odom_sub = nh.subscribe("odom", 1, &odom_callback);
     ros::Subscriber map_sub = nh.subscribe("map", 1, &map_callback);
+
+    // init navigator (motion controller) object
+    Navigator nav(&nh);
 
     // init loop rate
     ros::Rate loop_rate(10);

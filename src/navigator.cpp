@@ -1,6 +1,6 @@
 #include "navigator.h"
 
-Navigator::Navigator(ros::NodeHandle nh)
+Navigator::Navigator(ros::NodeHandle* nh)
 {
     // init velocities
     angular_vel = 0.0; 
@@ -9,7 +9,7 @@ Navigator::Navigator(ros::NodeHandle nh)
     rob_vel.linear.x = linear_vel;
     
     // init velocity publisher
-    vel_pub = nh.advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
+    vel_pub = nh->advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
 }
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)

@@ -10,6 +10,7 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
+#include "visualizer.h"
 
 // definitions
 #define UNKNOWN -1 // occupancy unknown
@@ -30,13 +31,18 @@ class Wavefront_Detector
         int pos, int map_size, int map_width);
     void pos_neighbors(int nbor[], int pos, int map_width);
     float points_dist(float x_1, float x_2, float y_1, float y_2);
+    Visualizer viz;
 
  public:
-    ~Wavefront_Detector() {};
     std::vector<std::vector<int>> frontiers(const nav_msgs::OccupancyGrid& map, 
         int map_height, int map_width, int pose);
     int nearest_frontier_idx(const std::vector<geometry_msgs::Point>& frontier_pos);
     int frontier_median(std::vector<int> frontier);
+    void visualize(std::vector<std::vector<int>>* frontiers);
+
+    // constructor and destructor
+    Wavefront_Detector(ros::NodeHandle* nh);
+    ~Wavefront_Detector() {};
 };
 
 #endif  // INCLUDE_WAVEFRONT_DETECTOR_H

@@ -60,7 +60,7 @@ class Navigator
    void rotate(float rad, float angular_speed, bool clockwise);
 
    // constructor and destructor
-   Navigator(ros::NodeHandle nh);
+   Navigator(ros::NodeHandle* nh);
    ~Navigator() {};
 };
 
