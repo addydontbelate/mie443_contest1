@@ -1,5 +1,10 @@
 #include "visualizer.h"
 
+void Visualizer::init(ros::NodeHandle* nh)
+{
+    ;
+}
+
 void Visualizer::visualize_frontier()
 {
     ;

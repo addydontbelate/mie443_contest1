@@ -36,7 +36,7 @@ class Wavefront_Detector
         int map_height, int map_width, int pose);
     int nearest_frontier_idx(const std::vector<geometry_msgs::Point>& frontier_pos);
     int frontier_median(std::vector<int> frontier);
-    
+
     // destructor
     ~Wavefront_Detector() {};
 };
