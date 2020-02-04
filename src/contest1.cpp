@@ -17,9 +17,6 @@
 #include "navigator.h"
 #include "visualizer.h"
 
-// global constants
-#define NUM_BUMPER 3 // LEFT, CENTER, RIGHT
-
 // timer macros
 #define TIME std::chrono::time_point<std::chrono::system_clock>
 #define CLOCK std::chrono::system_clock
@@ -72,6 +69,7 @@ void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
  */
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
+    // TODO: add left and right ranges and update move_to function
 	min_laser_dist = std::numeric_limits<float>::infinity(); 
     n_lasers = (msg->angle_max - msg->angle_min)/msg->angle_increment; 
     desired_n_lasers = DEG2RAD(view_angle)/msg->angle_increment;
@@ -193,12 +191,12 @@ int main(int argc, char **argv)
         ROS_INFO("[MAIN] Position: (%f, %f);\tOrientation: %f deg;\tMin Laser Dist: %f;", 
             rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), min_laser_dist);
 
-        // unexpected hit
+        // unexpected hit: move away from hit
         if (bumper_hit)
-        {
-            // TODO: add bunper response code here (make a function in nav)
-            ; // initiate recovery mode: move away from hit.
+        {   
+            nav.respond_to_bump();
 
+            // initiate recovery mode
             rob_state = _RECOVERY_;
             bumper_hit = false; // reset flag
         }
@@ -225,6 +223,7 @@ int main(int argc, char **argv)
         {
             ROS_INFO("Robot in NAV_TO_FRONTIER state");
             nav.move_to(rob_pos_x + (int(rand()%3) - 1), rob_pos_y + (int(rand()%3) - 1));
+
             // nav.move_to(goal_pos_x, goal_pos_y);
             rob_state = _INIT_; // repeat process
         }

@@ -32,8 +32,8 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
         while (angle_turned < rad && ros::ok())
         {
             initial_yaw = rob_yaw;
-            publish_move();
             ros::spinOnce();
+            publish_move();
             loop_rate.sleep();
             
             angle_turned += fabs(rob_yaw - initial_yaw);
@@ -43,8 +43,8 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
         while (angle_turned < M_PI && ros::ok())
         {
             initial_yaw = rob_yaw;
-            publish_move();
             ros::spinOnce();
+            publish_move();
             loop_rate.sleep();
             
             angle_turned += fabs(rob_yaw - initial_yaw);
@@ -76,8 +76,16 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 
 	while (dist_moved < dist && ros::ok())
     {
-		publish_move();
 		ros::spinOnce();
+
+        if (bumper_hit)
+        {   
+            respond_to_bump();
+            bumper_hit = false; // reset flag
+            return; // recalculate move
+        }
+
+        publish_move();
 		loop_rate.sleep();
 		
         dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
@@ -90,6 +98,8 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 void Navigator::move_to(float goal_x, float goal_y) 
 {
     ROS_INFO("Currently at (%f, %f);\t Moving to (%f, %f);", rob_pos_x, rob_pos_y, goal_x, goal_y);
+
+    // TODO: while not at goal: try this over and over till num_try = 5?
 
     // rotate towards goal
     float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
@@ -120,6 +130,8 @@ void Navigator::move_to(float goal_x, float goal_y)
 
 void Navigator::move_right(float dist, float linear_speed, float angular_speed)
 {
+    // TODO: while not at goal: try this over and over till num_try = 5?
+
     ROS_INFO("Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_right(angular_speed);
     move_straight(dist, linear_speed, FWD);
@@ -128,6 +140,8 @@ void Navigator::move_right(float dist, float linear_speed, float angular_speed)
 
 void Navigator::move_left(float dist, float linear_speed, float angular_speed)
 {
+    // TODO: while not at goal: try this over and over till num_try = 5?
+
     ROS_INFO("Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_left(angular_speed);
     move_straight(dist, linear_speed, FWD);
@@ -142,6 +156,54 @@ void Navigator::rotate_right(float angular_speed)
 void Navigator::rotate_left(float angular_speed)
 {
     rotate(DEG2RAD(90), angular_speed, CCW);
+}
+
+void Navigator::respond_to_bump()
+{
+    // get number of hits
+    uint8_t num_hits = 0;
+    for (uint8_t i = 0; i < NUM_BUMPER; ++i)
+        if (bumper[i] == kobuki_msgs::BumperEvent::PRESSED)
+            num_hits++;
+    
+    if (num_hits == 1) // one hit only
+    {
+        // left: move right
+        if (bumper[0] == kobuki_msgs::BumperEvent::PRESSED)
+            move_right(OBST_HIT_DIST, OBST_DET_VEL, MAX_ANG_VEL);
+        // center: move back
+        else if (bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
+            move_straight(OBST_HIT_DIST, OBST_DET_VEL, BCK);
+        // right: move left
+        else
+            move_left(OBST_HIT_DIST, OBST_DET_VEL, MAX_ANG_VEL);;
+    }
+    else if (num_hits == 2) // two hits
+    {
+        // left + center: move back towards right
+        if (bumper[0] == kobuki_msgs::BumperEvent::PRESSED  &&
+            bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
+        {
+            move_straight(OBST_HIT_DIST/2, OBST_DET_VEL, BCK);
+            rotate(DEG2RAD(45), MAX_ANG_VEL, CCW);
+            move_straight(OBST_HIT_DIST/2, OBST_DET_VEL, BCK);
+        }
+        // right + center: move back towards left
+        else if (bumper[2] == kobuki_msgs::BumperEvent::PRESSED  &&
+                bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
+        {
+            move_straight(OBST_HIT_DIST/2, OBST_DET_VEL, BCK);
+            rotate(DEG2RAD(45), MAX_ANG_VEL, CW);
+            move_straight(OBST_HIT_DIST/2, OBST_DET_VEL, BCK);
+        }
+        // right + left (unlikely): move back
+        else
+            move_straight(OBST_HIT_DIST, OBST_DET_VEL, BCK);
+    }
+    else // all bumpers are hit: move back
+    {
+        move_straight(OBST_HIT_DIST, OBST_HIT_DIST, BCK);
+    }
 }
 
 void Navigator::stop()
