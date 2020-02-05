@@ -76,16 +76,17 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 
 	while (dist_moved < dist && ros::ok())
     {
+        publish_move();
 		ros::spinOnce();
 
         if (bumper_hit)
         {   
+            ROS_INFO("[DEBUG] Detected hit while moving straight!");
             respond_to_bump();
             bumper_hit = false; // reset flag
             return; // recalculate move
         }
 
-        publish_move();
 		loop_rate.sleep();
 		
         dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
@@ -160,23 +161,36 @@ void Navigator::rotate_left(float angular_speed)
 
 void Navigator::respond_to_bump()
 {
+    ROS_INFO("[DEBUG] Inside bumper response!");
+
     // get number of hits
     uint8_t num_hits = 0;
     for (uint8_t i = 0; i < NUM_BUMPER; ++i)
         if (bumper[i] == kobuki_msgs::BumperEvent::PRESSED)
             num_hits++;
     
+    ROS_INFO("[DEBUG] Detected %d hits!", num_hits);
+
     if (num_hits == 1) // one hit only
     {
         // left: move right
         if (bumper[0] == kobuki_msgs::BumperEvent::PRESSED)
+        {
+            ROS_INFO("[DEBUG] Left bumper hit. Moving right!");
             move_right(OBST_HIT_DIST, OBST_DET_VEL, MAX_ANG_VEL);
+        }
         // center: move back
         else if (bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
+        {
+            ROS_INFO("[DEBUG] Center bumper hit. Moving back!");
             move_straight(OBST_HIT_DIST, OBST_DET_VEL, BCK);
+        }
         // right: move left
         else
-            move_left(OBST_HIT_DIST, OBST_DET_VEL, MAX_ANG_VEL);;
+        {
+            ROS_INFO("[DEBUG] Right bumper hit. Moving left!");
+            move_left(OBST_HIT_DIST, OBST_DET_VEL, MAX_ANG_VEL);
+        }
     }
     else if (num_hits == 2) // two hits
     {
