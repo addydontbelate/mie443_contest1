@@ -38,8 +38,8 @@ float rob_pos_y = 0.0;
 float goal_pos_x = rob_pos_x;
 float goal_pos_y = rob_pos_y;
 float front_laser_dist = std::numeric_limits<float>::infinity(); 
-float front_right_laser_dist = std::numeric_limits<float>::infinity(); 
-float front_left_laser_dist = std::numeric_limits<float>::infinity(); 
+float right_laser_dist = std::numeric_limits<float>::infinity(); 
+float left_laser_dist = std::numeric_limits<float>::infinity(); 
 int32_t n_lasers = 0;
 int32_t desired_n_lasers = 0; 
 int32_t view_angle = 10;         // +-5 deg from heading angle
@@ -73,8 +73,8 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
     // TODO: add left and right ranges and update move_to function
 	front_laser_dist = std::numeric_limits<float>::infinity(); 
-    front_left_laser_dist = std::numeric_limits<float>::infinity();
-    front_right_laser_dist = std::numeric_limits<float>::infinity();
+    left_laser_dist = std::numeric_limits<float>::infinity();
+    right_laser_dist = std::numeric_limits<float>::infinity();
     n_lasers = (msg->angle_max - msg->angle_min)/msg->angle_increment; 
     desired_n_lasers = DEG2RAD(view_angle)/msg->angle_increment;
 

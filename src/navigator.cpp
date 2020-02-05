@@ -84,8 +84,7 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
             bumper_hit = false; // reset flag
             return; // recalculate move
         }
-        else if (front_laser_dist < OBST_THRESHOLD || front_right_laser_dist < OBST_THRESHOLD || 
-            fron_left_laser_dist < OBST_THRESHOLD)
+        else if (front_laser_dist < OBST_THRESHOLD || right_laser_dist < OBST_THRESHOLD || left_laser_dist < OBST_THRESHOLD)
         {
             respond_to_obst();
             return;
@@ -217,45 +216,45 @@ void Navigator::respond_to_bump()
     }
 }
 
-void Navigator::detect_obst_case()
-{
-    if (front_left_laser_dist < OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
-    {
-        obst_case = "f_left";
-    }
-    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist < OBST_THRESHOLD)
-    {
-        obst_case = "f_right";
-    }
-    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
-    {
-        obst_case = "front";
-    }
-    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
-    {
-        obst_case = "left";
-    }
+// void Navigator::detect_obst_case()
+// {
+//     if (front_left_laser_dist < OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
+//     {
+//         obst_case = "f_left";
+//     }
+//     if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist < OBST_THRESHOLD)
+//     {
+//         obst_case = "f_right";
+//     }
+//     if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
+//     {
+//         obst_case = "front";
+//     }
+//     if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
+//     {
+//         obst_case = "left";
+//     }
 
-}
+// }
 
 void Navigator::respond_to_obst()
 {
-    // response to detected obstacles from laser_callback's scanned_regions
-    // respond relative to detect_obst_case
+//     // response to detected obstacles from laser_callback's scanned_regions
+//     // respond relative to detect_obst_case
     
-    stop();
-    if(right_laser_distance > left_laser_distance)
-    {
+//     stop();
+//     if(right_laser_distance > left_laser_distance)
+//     {
 
-    } else
-    {
+//     } else
+//     {
 
-    }
+//     }
 
-    // stop
-    // choose new direction based on laser information
-    // go forward for a set distance
-    // revaluate if a direct path to goal position is available
+//     // stop
+//     // choose new direction based on laser information
+//     // go forward for a set distance
+//     // revaluate if a direct path to goal position is available
 }
 
 void Navigator::stop()
