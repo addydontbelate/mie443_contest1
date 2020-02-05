@@ -27,6 +27,7 @@
 #define OBST_HIT_DIST 0.2   // [m]
 #define GOAL_REACH_DIST 0.2 // [m]
 #define NUM_REPLANS 5       // num 
+#define OBST_THRESHOLD 0.3  // [m] 
 
 // direction macros
 #define FWD true
@@ -48,6 +49,7 @@ class Navigator
  private:
   float angular_vel;  // <= M_PI/6 [rad/s]
   float linear_vel;   // <= 0.25 [m/s] 
+  string obst_case; 
   
   // robot velocity publisher
   ros::Publisher vel_pub;
