@@ -216,45 +216,50 @@ void Navigator::respond_to_bump()
     }
 }
 
-// void Navigator::detect_obst_case()
-// {
-//     if (front_left_laser_dist < OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
-//     {
-//         obst_case = "f_left";
-//     }
-//     if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist < OBST_THRESHOLD)
-//     {
-//         obst_case = "f_right";
-//     }
-//     if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
-//     {
-//         obst_case = "front";
-//     }
-//     if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
-//     {
-//         obst_case = "left";
-//     }
+void Navigator::detect_obst_case()
+{
+    if (front_left_laser_dist < OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
+    {
+        obst_case = "f_left";
+    }
+    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist < OBST_THRESHOLD)
+    {
+        obst_case = "f_right";
+    }
+    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
+    {
+        obst_case = "front";
+    }
+    if (front_left_laser_dist < OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist < OBST_THRESHOLD)
+    {
+        obst_case = "blocked";
+    }
 
-// }
+}
 
 void Navigator::respond_to_obst()
 {
-//     // response to detected obstacles from laser_callback's scanned_regions
-//     // respond relative to detect_obst_case
+    // response to detected obstacles from laser_callback's scanned_regions
+    // respond relative to detect_obst_case
     
-//     stop();
-//     if(right_laser_distance > left_laser_distance)
-//     {
+    stop();
 
-//     } else
-//     {
-
-//     }
-
-//     // stop
-//     // choose new direction based on laser information
-//     // go forward for a set distance
-//     // revaluate if a direct path to goal position is available
+    if (obst_case == "blocked") 
+    {
+        // 180 degrees
+        rotate_right(MAX_ANG_VEL);
+        rotate_right(MAX_ANG_VEL);
+    } else if (obst_case == "front") 
+    {
+        rotate_right(MAX_ANG_VEL);
+    } else if (obst_case == "f_left")
+    {
+        rotate_right(MAX_ANG_VEL);
+    }
+    else if (obst_case == "f_right")
+    {
+        rotate_right(MAX_ANG_VEL);
+    }
 }
 
 void Navigator::stop()
