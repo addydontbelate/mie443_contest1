@@ -211,7 +211,7 @@ void Navigator::respond_to_bump()
         else
             move_straight(OBST_HIT_DIST, OBST_DET_VEL, BCK);
     }
-    else // all bumpers are hit: move back
+    else // blocked bumpers are hit: move back
     {
         move_straight(OBST_HIT_DIST, OBST_HIT_DIST, BCK);
     }
@@ -231,9 +231,9 @@ void Navigator::detect_obst_case()
     {
         obst_case = "front";
     }
-    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
+    if (front_left_laser_dist < OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist < OBST_THRESHOLD)
     {
-        obst_case = "left";
+        obst_case = "blocked";
     }
 
 }
@@ -242,17 +242,35 @@ void Navigator::respond_to_obst()
 {
     // response to detected obstacles from laser_callback's scanned_regions
     // respond relative to detect_obst_case
-    
-    stop();
-    if(right_laser_distance > left_laser_distance)
-    {
 
-    } else
-    {
+    detect_obst_case()
+    float angle = 0.0;
 
+    if(obst_case == "blocked")
+    {
+        // Reverse
+        anlge = 180;
+    }
+    if (obst_case == "front")
+    {
+        // Turn right 45 deg
+        angle = 45;
+    }
+    if (obst_case == "f_right")
+    {
+        // Turn left 45 deg
+        angle = -45
+    }
+    if (obst_case == "f_left")
+    {
+        // Turn right 45 deg
+        angle = 45;
     }
 
-    // stop
+    stop()
+    // give command for rotating by <angle> and moving by <linear>
+
+
     // choose new direction based on laser information
     // go forward for a set distance
     // revaluate if a direct path to goal position is available
