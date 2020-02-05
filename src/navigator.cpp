@@ -84,6 +84,12 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
             bumper_hit = false; // reset flag
             return; // recalculate move
         }
+        else if (front_laser_dist < OBST_THRESHOLD || front_right_laser_dist < OBST_THRESHOLD || 
+            fron_left_laser_dist < OBST_THRESHOLD)
+        {
+            respond_to_obst();
+            return;
+        }
 
         publish_move();
 		loop_rate.sleep();
@@ -105,7 +111,6 @@ void Navigator::move_to(float goal_x, float goal_y)
     while (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST && 
         num_tries < NUM_REPLANS)
     {
-        ros::spinOnce;
         // rotate towards goal
         float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
@@ -235,7 +240,22 @@ void Navigator::detect_obst_case()
 
 void Navigator::respond_to_obst()
 {
-    ;
+    // response to detected obstacles from laser_callback's scanned_regions
+    // respond relative to detect_obst_case
+    
+    stop();
+    if(right_laser_distance > left_laser_distance)
+    {
+
+    } else
+    {
+
+    }
+
+    // stop
+    // choose new direction based on laser information
+    // go forward for a set distance
+    // revaluate if a direct path to goal position is available
 }
 
 void Navigator::stop()

@@ -42,7 +42,7 @@ float front_right_laser_dist = std::numeric_limits<float>::infinity();
 float front_left_laser_dist = std::numeric_limits<float>::infinity(); 
 int32_t n_lasers = 0;
 int32_t desired_n_lasers = 0; 
-int32_t view_angle = 5;         // +-5 deg from heading angle
+int32_t view_angle = 10;         // +-5 deg from heading angle
 bool detect_frontier = false;   // wfd enable flag
 bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
@@ -73,6 +73,8 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
     // TODO: add left and right ranges and update move_to function
 	front_laser_dist = std::numeric_limits<float>::infinity(); 
+    front_left_laser_dist = std::numeric_limits<float>::infinity();
+    front_right_laser_dist = std::numeric_limits<float>::infinity();
     n_lasers = (msg->angle_max - msg->angle_min)/msg->angle_increment; 
     desired_n_lasers = DEG2RAD(view_angle)/msg->angle_increment;
 
@@ -90,14 +92,11 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     }
 
     // laser region ranges
-    scanned_regions = {
-        'right' = min(min(msgs.ranges[:143], 10));
-        'front_right' = min(min(msgs.ranges[143:], 10));
-        'front' = min(min(msgs.ranges[], 10));
-        'front_left' = min(min(msgs.ranges[], 10));
-        'front' = min(min(msgs.ranges[], 10));
-    }
+    // recall that 180deg range has 720 encodings
+    // range values determined by 720/3 regions
 
+    // front_left_laser_dist = std::min(front_left_laser_dist, msg->ranges[:]);
+    // front_right_laser_dist = std::min(front_right_laser_dist, msgs->ranges[:]);
 }
 
 /**

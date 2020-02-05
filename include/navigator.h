@@ -26,8 +26,8 @@
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m]
 #define GOAL_REACH_DIST 0.2 // [m]
-#define NUM_REPLANS 5       // num 
-#define OBST_THRESHOLD 0.3  // [m] 
+#define OBST_THRESHOLD 0.3     // [m]
+#define NUM_REPLANS 5       // num
 
 // direction macros
 #define FWD true
@@ -42,6 +42,9 @@ extern float rob_pos_y;
 extern float goal_pos_x;
 extern float goal_pos_y;
 extern bool bumper_hit;
+extern float front_laser_dist;
+extern float right_laser_dist; 
+extern float left_laser_dist;
 extern uint8_t bumper[NUM_BUMPER];
 
 class Navigator
