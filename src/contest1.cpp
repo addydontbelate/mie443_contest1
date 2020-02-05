@@ -38,8 +38,8 @@ float rob_pos_y = 0.0;
 float goal_pos_x = rob_pos_x;
 float goal_pos_y = rob_pos_y;
 float front_laser_dist = std::numeric_limits<float>::infinity(); 
-float right_laser_dist = std::numeric_limits<float>::infinity(); 
-float left_laser_dist = std::numeric_limits<float>::infinity(); 
+float front_right_laser_dist = std::numeric_limits<float>::infinity(); 
+float front_left_laser_dist = std::numeric_limits<float>::infinity(); 
 int32_t n_lasers = 0;
 int32_t desired_n_lasers = 0; 
 int32_t view_angle = 10;         // +-5 deg from heading angle
@@ -93,9 +93,10 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 
     // laser region ranges
     // recall that 180deg range has 720 encodings
-    // range values determined by 720/5
-    front_left_laser_dist = std::min(front_left_laser_dist, msg->ranges[)]);
-    front_right_laser_dist = std::min(front_right_laser_dist, msgs->ranges[]);
+    // range values determined by 720/3 regions
+
+    // front_left_laser_dist = std::min(front_left_laser_dist, msg->ranges[:]);
+    // front_right_laser_dist = std::min(front_right_laser_dist, msgs->ranges[:]);
 }
 
 /**

@@ -84,8 +84,8 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
             bumper_hit = false; // reset flag
             return; // recalculate move
         }
-        else if (front_laser_dist < OBST_THRESH || front_right_laser_dist < OBST_THRESH || 
-            fron_left_laser_dist < OBST_THRESH)
+        else if (front_laser_dist < OBST_THRESHOLD || front_right_laser_dist < OBST_THRESHOLD || 
+            fron_left_laser_dist < OBST_THRESHOLD)
         {
             respond_to_obst();
             return;
@@ -215,6 +215,27 @@ void Navigator::respond_to_bump()
     {
         move_straight(OBST_HIT_DIST, OBST_HIT_DIST, BCK);
     }
+}
+
+void Navigator::detect_obst_case()
+{
+    if (left_laser_dist < OBST_THRESHOLD)
+    {
+        obst_case = "left";
+    }
+    if (right_laser_dist < OBST_THRESHOLD)
+    {
+        obst_case = "right";
+    }
+    if (front_laser_dist < OBST_THRESHOLD)
+    {
+        obst_case = "front";
+    }
+    if (left_laser_dist < OBST_THRESHOLD)
+    {
+        obst_case = "left";
+    }
+
 }
 
 void Navigator::respond_to_obst()
