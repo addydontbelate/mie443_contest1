@@ -214,19 +214,19 @@ void Navigator::respond_to_bump()
 
 void Navigator::detect_obst_case()
 {
-    if (left_laser_dist < OBST_THRESHOLD)
+    if (front_left_laser_dist < OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
     {
-        obst_case = "left";
+        obst_case = "f_left";
     }
-    if (right_laser_dist < OBST_THRESHOLD)
+    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist > OBST_THRESHOLD && front_right_laser_dist < OBST_THRESHOLD)
     {
-        obst_case = "right";
+        obst_case = "f_right";
     }
-    if (front_laser_dist < OBST_THRESHOLD)
+    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
     {
         obst_case = "front";
     }
-    if (left_laser_dist < OBST_THRESHOLD)
+    if (front_left_laser_dist > OBST_THRESHOLD && front_laser_dist < OBST_THRESHOLD && front_right_laser_dist > OBST_THRESHOLD)
     {
         obst_case = "left";
     }
