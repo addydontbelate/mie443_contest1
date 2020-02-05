@@ -210,7 +210,7 @@ void Navigator::respond_to_bump()
         else
             move_straight(OBST_HIT_DIST, OBST_DET_VEL, BCK);
     }
-    else // all bumpers are hit: move back
+    else // blocked bumpers are hit: move back
     {
         move_straight(OBST_HIT_DIST, OBST_HIT_DIST, BCK);
     }
