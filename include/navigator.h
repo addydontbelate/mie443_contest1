@@ -24,7 +24,9 @@
 #define FREE_ENV_VEL 0.25   // [m/s]
 #define OBST_DET_VEL 0.1    // [m/s]
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
-#define OBST_HIT_DIST 0.2   // [m] 
+#define OBST_HIT_DIST 0.2   // [m]
+#define GOAL_REACH_DIST 0.2 // [m]
+#define NUM_REPLANS 5       // num 
 
 // direction macros
 #define FWD true
@@ -52,7 +54,7 @@ class Navigator
   geometry_msgs::Twist rob_vel;
   void publish_move();
   void move_straight(float dist, float linear_speed, bool forward);
-  
+
  public:
   // TODO: add bumper and obstacle avoidance to move_straight() & rotate() 
   // (as a part of nav public functions)
@@ -66,6 +68,7 @@ class Navigator
   void rotate_right(float angular_speed);
   void rotate_left(float angular_speed);
   void respond_to_bump();
+  void respond_to_obst();
 
    // constructor and destructor
    Navigator(ros::NodeHandle* nh);

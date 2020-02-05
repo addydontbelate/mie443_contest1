@@ -37,7 +37,9 @@ float rob_pos_x = 0.0;
 float rob_pos_y = 0.0;
 float goal_pos_x = rob_pos_x;
 float goal_pos_y = rob_pos_y;
-float min_laser_dist = std::numeric_limits<float>::infinity(); 
+float front_laser_dist = std::numeric_limits<float>::infinity(); 
+float right_laser_dist = std::numeric_limits<float>::infinity(); 
+float left_laser_dist = std::numeric_limits<float>::infinity(); 
 int32_t n_lasers = 0;
 int32_t desired_n_lasers = 0; 
 int32_t view_angle = 5;         // +-5 deg from heading angle
@@ -70,22 +72,32 @@ void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
     // TODO: add left and right ranges and update move_to function
-	min_laser_dist = std::numeric_limits<float>::infinity(); 
+	front_laser_dist = std::numeric_limits<float>::infinity(); 
     n_lasers = (msg->angle_max - msg->angle_min)/msg->angle_increment; 
     desired_n_lasers = DEG2RAD(view_angle)/msg->angle_increment;
 
     if (DEG2RAD(view_angle) < msg->angle_max && -DEG2RAD(view_angle) > msg->angle_min) 
     {
-        // find min_laser_dist over view_angle
+        // find front_laser_dist over view_angle
         for (uint32_t laser_idx = (n_lasers/2 - desired_n_lasers); laser_idx < (n_lasers/2 + desired_n_lasers); ++laser_idx)
-            min_laser_dist = std::min(min_laser_dist, msg->ranges[laser_idx]);
-    } 
+            front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+    }
     else 
     {
         // use full range if view angle > laser range
         for (uint32_t laser_idx = 0; laser_idx < n_lasers; ++laser_idx) 
-            min_laser_dist = std::min(min_laser_dist, msg->ranges[laser_idx]);
+            front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
     }
+
+    // laser region ranges
+    scanned_regions = {
+        'right' = min(min(msgs.ranges[:143], 10));
+        'front_right' = min(min(msgs.ranges[143:], 10));
+        'front' = min(min(msgs.ranges[], 10));
+        'front_left' = min(min(msgs.ranges[], 10));
+        'front' = min(min(msgs.ranges[], 10));
+    }
+
 }
 
 /**
@@ -189,7 +201,7 @@ int main(int argc, char **argv)
         // update robot state vars
         ros::spinOnce();
         ROS_INFO("[MAIN] Position: (%f, %f);\tOrientation: %f deg;\tMin Laser Dist: %f;", 
-            rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), min_laser_dist);
+            rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), front_laser_dist);
 
         // unexpected hit: move away from hit
         if (bumper_hit)
