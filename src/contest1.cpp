@@ -83,11 +83,11 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     
     // find left_laser_dist
     for (uint32_t laser_idx = 0; laser_idx < (n_lasers/2 - desired_n_lasers) - 1; ++laser_idx)
-        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+        left_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
     
     // find right_laser_dist
     for (uint32_t laser_idx = (n_lasers/2 + desired_n_lasers) + 1; laser_idx < msg->ranges.size(); ++laser_idx)
-        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+        right_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
 }
 
 /**
