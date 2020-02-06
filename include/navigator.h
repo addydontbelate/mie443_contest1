@@ -25,6 +25,10 @@
 #define OBST_DET_VEL 0.1    // [m/s]
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m] 
+#define OBST_DIST_THRESH 0.5// [m]
+#define GOAL_REACH_DIST 0.2 // [m]
+#define SF 1.15             // num; safety factor
+#define NUM_REPLANS 5       // num
 
 // direction macros
 #define FWD true
@@ -39,6 +43,9 @@ extern float rob_pos_y;
 extern float goal_pos_x;
 extern float goal_pos_y;
 extern bool bumper_hit;
+extern float front_laser_dist;
+extern float left_laser_dist;
+extern float right_laser_dist;
 extern uint8_t bumper[NUM_BUMPER];
 
 class Navigator
@@ -66,6 +73,7 @@ class Navigator
   void rotate_right(float angular_speed);
   void rotate_left(float angular_speed);
   void respond_to_bump();
+  void respond_to_obst();
 
    // constructor and destructor
    Navigator(ros::NodeHandle* nh);

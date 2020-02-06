@@ -37,10 +37,12 @@ float rob_pos_x = 0.0;
 float rob_pos_y = 0.0;
 float goal_pos_x = rob_pos_x;
 float goal_pos_y = rob_pos_y;
-float min_laser_dist = std::numeric_limits<float>::infinity(); 
+float front_laser_dist = std::numeric_limits<float>::infinity();
+float left_laser_dist = std::numeric_limits<float>::infinity();
+float right_laser_dist = std::numeric_limits<float>::infinity();
 int32_t n_lasers = 0;
-int32_t desired_n_lasers = 0; 
-int32_t view_angle = 5;         // +-5 deg from heading angle
+int32_t desired_n_lasers = 0;
+int32_t view_angle = 10;        // +-10 deg from heading angle
 bool detect_frontier = false;   // wfd enable flag
 bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
@@ -69,22 +71,23 @@ void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
  */
 void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
-    // TODO: add left and right ranges and update move_to function
-	min_laser_dist = std::numeric_limits<float>::infinity(); 
+	front_laser_dist = std::numeric_limits<float>::infinity();
+    left_laser_dist = std::numeric_limits<float>::infinity();
+    right_laser_dist = std::numeric_limits<float>::infinity();
     n_lasers = (msg->angle_max - msg->angle_min)/msg->angle_increment; 
     desired_n_lasers = DEG2RAD(view_angle)/msg->angle_increment;
 
-    if (DEG2RAD(view_angle) < msg->angle_max && -DEG2RAD(view_angle) > msg->angle_min) 
+    for (uint32_t laser_idx = n_lasers/2 - desired_n_lasers; laser_idx < n_lasers/2 + desired_n_lasers; ++laser_idx)
     {
-        // find min_laser_dist over view_angle
-        for (uint32_t laser_idx = (n_lasers/2 - desired_n_lasers); laser_idx < (n_lasers/2 + desired_n_lasers); ++laser_idx)
-            min_laser_dist = std::min(min_laser_dist, msg->ranges[laser_idx]);
-    } 
-    else 
+        if (msg->range_max > msg->ranges[laser_idx] > 0) 
+            front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+    }
+    for (uint32_t laser_idx = 0; laser_idx < n_lasers/2; ++laser_idx)
     {
-        // use full range if view angle > laser range
-        for (uint32_t laser_idx = 0; laser_idx < n_lasers; ++laser_idx) 
-            min_laser_dist = std::min(min_laser_dist, msg->ranges[laser_idx]);
+        if (msg->range_max > msg->ranges[laser_idx] > 0) 
+            right_laser_dist = std::min(right_laser_dist, msg->ranges[laser_idx]);
+        if (msg->range_max > msg->ranges[n_lasers-laser_idx-1] > 0)
+            left_laser_dist = std::min(left_laser_dist, msg->ranges[n_lasers-laser_idx-1]);
     }
 }
 
@@ -117,7 +120,7 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
         // get frontiers
         std::vector<std::vector<int>> frontiers = wfd.frontiers(map, map.info.height, 
             map.info.width, x + (y * map.info.width));
-        ROS_INFO("Found %d frontiers", static_cast<int>(frontiers.size()));
+        ROS_INFO("[WFD] Found %d frontiers", static_cast<int>(frontiers.size()));
 
         // visualize frontiers
         viz.visualize_frontier();
@@ -139,20 +142,20 @@ void map_callback(const nav_msgs::OccupancyGrid& map)
 
         // get nearest frontier
         int nf_idx = wfd.nearest_frontier_idx(frontier_pos);
-        ROS_INFO("Nearest frontier index is: %d", nf_idx);
+        ROS_INFO("[WFD] Nearest frontier index is: %d", nf_idx);
 
         //  update goal position
         if (!frontier_pos.empty())
         {
             goal_pos_x = frontier_pos[nf_idx].x;
             goal_pos_y = frontier_pos[nf_idx].y;
-            ROS_INFO("Goal position set to: (%f, %f)", goal_pos_x, goal_pos_y);
+            ROS_INFO("[WFD] Goal position set to: (%f, %f)", goal_pos_x, goal_pos_y);
         }
         else
         {
             goal_pos_x = rob_pos_x;
             goal_pos_y = rob_pos_y;
-            ROS_INFO("Frontier not found! Goal set to: (%f, %f)", goal_pos_x, goal_pos_y);
+            ROS_INFO("[WFD] Frontier not found! Goal set to: (%f, %f)", goal_pos_x, goal_pos_y);
         }
 
         detect_frontier = false; // set to true when needing a new frontier
@@ -189,39 +192,39 @@ int main(int argc, char **argv)
         // update robot state vars
         ros::spinOnce();
         ROS_INFO("[MAIN] Position: (%f, %f);\tOrientation: %f deg;\tMin Laser Dist: %f;", 
-            rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), min_laser_dist);
+            rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), front_laser_dist);
 
         // unexpected hit: move away from hit
         if (bumper_hit)
         {   
+            bumper_hit = false; // reset flag
             nav.respond_to_bump();
 
             // initiate recovery mode
             rob_state = _RECOVERY_;
-            bumper_hit = false; // reset flag
         }
 
         // robot fsm
         if (rob_state == _INIT_)
         {
-            ROS_INFO("Robot in INIT state");
+            ROS_INFO("[MAIN] Robot in INIT state");
             nav.rotate(DEG2RAD(360), MAX_ANG_VEL, CW);
             rob_state = _GET_NEW_FRONTIER_;
             // detect_frontier = true;
         }
         else if (rob_state == _RECOVERY_)
         {
-            ROS_INFO("Robot in RECOVERY state");
+            ROS_INFO("[MAIN] Robot in RECOVERY state");
             rob_state = _INIT_;
         }
         else if (rob_state == _GET_NEW_FRONTIER_)
         {
-            ROS_INFO("Robot in GET_NEW_FRONTIER state");
+            ROS_INFO("[MAIN] Robot in GET_NEW_FRONTIER state");
             rob_state = _NAV_TO_FRONTIER_;
         }
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
-            ROS_INFO("Robot in NAV_TO_FRONTIER state");
+            ROS_INFO("[MAIN] Robot in NAV_TO_FRONTIER state");
             nav.move_to(rob_pos_x + (int(rand()%3) - 1), rob_pos_y + (int(rand()%3) - 1));
 
             // nav.move_to(goal_pos_x, goal_pos_y);
@@ -229,7 +232,7 @@ int main(int argc, char **argv)
         }
         else // invalid state stored
         {
-            ROS_INFO("Robot in INVALID state! Starting RECOVERY");
+            ROS_INFO("[MAIN] Robot in INVALID state! Starting RECOVERY");
             rob_state = _RECOVERY_;
             nav.stop(); // stop robot movement
         }
@@ -239,5 +242,8 @@ int main(int argc, char **argv)
         loop_rate.sleep();
     }
 
+    // time up: stop
+    ROS_INFO("[MAIN] Time up! Stopping.");
+    nav.stop();
     return 0;
 }
