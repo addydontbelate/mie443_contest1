@@ -16,7 +16,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
 	ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
     
-    float initial_yaw;
+    float initial_yaw = rob_yaw;
 
     if (clockwise)
         angular_vel = -fabs(angular_speed);
@@ -110,7 +110,7 @@ void Navigator::move_to(float goal_x, float goal_y)
     float m_angle = 0.0;
     uint8_t num_tries = 0;
 
-    while (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST && 
+    while (fabs(rob_pos_x - goal_x) > GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) > GOAL_REACH_DIST && 
         num_tries < NUM_REPLANS) 
     {
         // rotate towards goal
