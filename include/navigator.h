@@ -59,16 +59,13 @@ class Navigator
   geometry_msgs::Twist rob_vel;
   void publish_move();
   void move_straight(float dist, float linear_speed, bool forward);
-  
+  void move_right(float dist, float linear_speed, float angular_speed);
+  void move_left(float dist, float linear_speed, float angular_speed);
+ 
  public:
-  // TODO: add bumper and obstacle avoidance to move_straight() & rotate() 
-  // (as a part of nav public functions)
-
   // commands
   void stop();
   void move_to(float goal_x, float goal_y);
-  void move_right(float dist, float linear_speed, float angular_speed);
-  void move_left(float dist, float linear_speed, float angular_speed);
   void rotate(float rad, float angular_speed, bool clockwise);
   void rotate_right(float angular_speed);
   void rotate_left(float angular_speed);

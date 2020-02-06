@@ -77,18 +77,17 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     n_lasers = (msg->angle_max - msg->angle_min)/msg->angle_increment; 
     desired_n_lasers = DEG2RAD(view_angle)/msg->angle_increment;
 
-    for (uint32_t laser_idx = n_lasers/2 - desired_n_lasers; laser_idx < n_lasers/2 + desired_n_lasers; ++laser_idx)
-    {
-        if (msg->range_max > msg->ranges[laser_idx] > 0) 
-            front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
-    }
-    for (uint32_t laser_idx = 0; laser_idx < n_lasers/2; ++laser_idx)
-    {
-        if (msg->range_max > msg->ranges[laser_idx] > 0) 
-            right_laser_dist = std::min(right_laser_dist, msg->ranges[laser_idx]);
-        if (msg->range_max > msg->ranges[n_lasers-laser_idx-1] > 0)
-            left_laser_dist = std::min(left_laser_dist, msg->ranges[n_lasers-laser_idx-1]);
-    }
+    // find front_laser_dist over view_angle
+    for (uint32_t laser_idx = (n_lasers/2 - desired_n_lasers); laser_idx < (n_lasers/2 + desired_n_lasers); ++laser_idx)
+        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+    
+    // find left_laser_dist
+    for (uint32_t laser_idx = 0; laser_idx < (n_lasers/2 - desired_n_lasers) - 1; ++laser_idx)
+        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+    
+    // find right_laser_dist
+    for (uint32_t laser_idx = (n_lasers/2 + desired_n_lasers) + 1; laser_idx < msg->ranges.size(); ++laser_idx)
+        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
 }
 
 /**

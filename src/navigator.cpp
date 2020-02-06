@@ -107,40 +107,46 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 void Navigator::move_to(float goal_x, float goal_y) 
 {
     ROS_INFO("[NAV] Currently at (%f, %f); Moving to (%f, %f);", rob_pos_x, rob_pos_y, goal_x, goal_y);
+    float m_angle = 0.0;
+    uint8_t num_tries = 0;
 
-    // TODO: while not at goal: try this over and over till num_try = 5?
-
-    // rotate towards goal
-    float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
-
-    if (goal_y > 0) // goal ccw
-    {  
-        if (rob_yaw > 0)
-            (rob_yaw - m_angle > 0) ? rotate(rob_yaw - m_angle, MAX_ANG_VEL, CW) : 
-                rotate(m_angle - rob_yaw, MAX_ANG_VEL, CCW);
-        else
-            rotate(m_angle + rob_yaw, MAX_ANG_VEL, CCW);
-    }
-    else // goal cw
+    while (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST && 
+        num_tries < NUM_REPLANS) 
     {
-        if (rob_yaw < 0)
-            (rob_yaw - m_angle < 0) ? rotate(fabs(rob_yaw - m_angle), MAX_ANG_VEL, CCW) : 
-                rotate(fabs(m_angle - rob_yaw), MAX_ANG_VEL, CW);
-        else
-            rotate(m_angle + rob_yaw, MAX_ANG_VEL, CW);
-    }
+        // rotate towards goal
+        m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
-    // move straight to goal
-    float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
-    move_straight(dist, FREE_ENV_VEL, FWD);
+        if (goal_y > 0) // goal ccw
+        {  
+            if (rob_yaw > 0)
+                (rob_yaw - m_angle > 0) ? rotate(rob_yaw - m_angle, MAX_ANG_VEL, CW) : 
+                    rotate(m_angle - rob_yaw, MAX_ANG_VEL, CCW);
+            else
+                rotate(m_angle + rob_yaw, MAX_ANG_VEL, CCW);
+        }
+        else // goal cw
+        {
+            if (rob_yaw < 0)
+                (rob_yaw - m_angle < 0) ? rotate(fabs(rob_yaw - m_angle), MAX_ANG_VEL, CCW) : 
+                    rotate(fabs(m_angle - rob_yaw), MAX_ANG_VEL, CW);
+            else
+                rotate(m_angle + rob_yaw, MAX_ANG_VEL, CW);
+        }
+
+        // move straight to goal
+        float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
+        move_straight(dist, FREE_ENV_VEL, FWD);
+
+        // increment move
+        ROS_INFO("[NAV] Required %d replans so far", num_tries);
+        num_tries++;
+    }
     
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
 
 void Navigator::move_right(float dist, float linear_speed, float angular_speed)
 {
-    // TODO: while not at goal: try this over and over till num_try = 5?
-
     ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_right(angular_speed);
     move_straight(dist, linear_speed, FWD);
@@ -149,8 +155,6 @@ void Navigator::move_right(float dist, float linear_speed, float angular_speed)
 
 void Navigator::move_left(float dist, float linear_speed, float angular_speed)
 {
-    // TODO: while not at goal: try this over and over till num_try = 5?
-
     ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_left(angular_speed);
     move_straight(dist, linear_speed, FWD);
