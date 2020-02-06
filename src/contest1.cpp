@@ -16,6 +16,8 @@
 #include "wavefront_detector.h"
 #include "navigator.h"
 #include "visualizer.h"
+#include <map>
+#include <array>
 
 // timer macros
 #define TIME std::chrono::time_point<std::chrono::system_clock>
@@ -47,6 +49,13 @@ bool detect_frontier = false;   // wfd enable flag
 bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
     kobuki_msgs::BumperEvent::RELEASED, kobuki_msgs::BumperEvent::RELEASED};
+
+// std::map<int, std::array<float, 2>> nav_states;
+// nav_states.insert(std::pair<int,std::array<float,2>>(0,{0.0,10.0})); // left
+// nav_states.insert(std::pair<int,std::array<float,2>>(1,{10.0, 0.0}));// up
+// nav_states.insert(std::pair<int,std::array<float,2>>(2,{0.0, -10.0})); // right
+// nav_states.insert(std::pair<int,std::array<float,2>>(3,{-10.0,0.0})); // do
+// int current_nav_state = 0;
 
 // global object for custom visualization
 Visualizer viz;
@@ -83,11 +92,11 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     
     // find left_laser_dist
     for (uint32_t laser_idx = 0; laser_idx < (n_lasers/2 - desired_n_lasers) - 1; ++laser_idx)
-        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+        left_laser_dist = std::min(left_laser_dist, msg->ranges[laser_idx]);
     
     // find right_laser_dist
     for (uint32_t laser_idx = (n_lasers/2 + desired_n_lasers) + 1; laser_idx < msg->ranges.size(); ++laser_idx)
-        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+        right_laser_dist = std::min(right_laser_dist, msg->ranges[laser_idx]);
 }
 
 /**
@@ -220,10 +229,21 @@ int main(int argc, char **argv)
         {
             ROS_INFO("[MAIN] Robot in GET_NEW_FRONTIER state");
             rob_state = _NAV_TO_FRONTIER_;
+            rob_state = _INIT_;
         }
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
             ROS_INFO("[MAIN] Robot in NAV_TO_FRONTIER state");
+
+
+            // 1 - Clockwise 
+            // float goal_pos_x, goal_pos_y;
+            // goal_pos_x = nav_states[current_nav_state][0];
+            // goal_pos_y = nav_states[current_nav_state][1];
+            // current_nav_state = (current_nav_state+1) % 4;
+            // nav.move_to(goal_pos_x, goal_pos_y);
+
+            // 2 - Random walk
 
             // gen rand nums
             int delta_x = 0, delta_y = 0;
@@ -232,10 +252,8 @@ int main(int argc, char **argv)
                 delta_x  = (int(rand()%3) - 1);
                 delta_y  = (int(rand()%3) - 1);
             }
-
             nav.move_to(rob_pos_x + delta_x, rob_pos_y + delta_y);
-
-            // nav.move_to(goal_pos_x, goal_pos_y);
+            
             rob_state = _INIT_; // repeat process
         }
         else // invalid state stored

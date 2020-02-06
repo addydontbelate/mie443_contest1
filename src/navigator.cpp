@@ -14,7 +14,7 @@ Navigator::Navigator(ros::NodeHandle* nh)
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
-    ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
+    // ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
     
     float initial_yaw = rob_yaw;
 
@@ -49,13 +49,13 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
             
             angle_turned += fabs(rob_yaw - initial_yaw);
         }
-        ROS_INFO("[DEBUG] Calling rotate again!");
+        // ROS_INFO("[DEBUG] Calling rotate again!");
         rotate(rad-M_PI, angular_speed, clockwise);
     }
     
     stop();
 
-    ROS_INFO("[NAV] Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
+    // ROS_INFO("[NAV] Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
 }
 
 void Navigator::move_straight(float dist, float linear_speed, bool forward)
@@ -141,24 +141,24 @@ void Navigator::move_to(float goal_x, float goal_y)
         ROS_INFO("[NAV] Required %d replans so far", num_tries);
         num_tries++;
     }
-    ROS_INFO("Currently %f from goal_x and %f from goal_y", fabs(rob_pos_x - goal_x), fabs(rob_pos_y - goal_y));
+    
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
 
 void Navigator::move_right(float dist, float linear_speed, float angular_speed)
 {
-    ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
+    // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_right(angular_speed);
     move_straight(dist, linear_speed, FWD);
-    ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+    // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
 
 void Navigator::move_left(float dist, float linear_speed, float angular_speed)
 {
-    ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
+    // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_left(angular_speed);
     move_straight(dist, linear_speed, FWD);
-    ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+    // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
 
 void Navigator::rotate_right(float angular_speed)
