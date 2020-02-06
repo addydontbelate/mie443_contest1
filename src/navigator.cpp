@@ -79,13 +79,14 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
         publish_move();
 		ros::spinOnce();
 
-        if (bumper_hit)
-        {   
-            ROS_INFO("[DEBUG] Detected hit while moving straight!");
-            respond_to_bump();
-            bumper_hit = false; // reset flag
-            return; // recalculate move
-        }
+        // MAIN ISSUE: GOING IN AN INFINITE LOOP! NEED TO GET OUT OF THIS STATE. SAFER TO USE A SEPARATE FUNCTION TO GET OUT!
+        // if (bumper_hit)
+        // {   
+        //     ROS_INFO("[DEBUG] Detected hit while moving straight!");
+        //     respond_to_bump();
+        //     bumper_hit = false; // reset flag
+        //     return; // recalculate move
+        // }
 
 		loop_rate.sleep();
 		
