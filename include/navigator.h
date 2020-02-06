@@ -25,7 +25,7 @@
 #define OBST_DET_VEL 0.1    // [m/s]
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m] 
-#define OBST_DIST_THRESH 0.5// [m]
+#define OBST_DIST_THRESH 0.25// [m]
 #define GOAL_REACH_DIST 0.2 // [m]
 #define SF 1.15             // num; safety factor
 #define NUM_REPLANS 5       // num

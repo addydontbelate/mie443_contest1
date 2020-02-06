@@ -190,8 +190,8 @@ int main(int argc, char **argv)
     {
         // update robot state vars
         ros::spinOnce();
-        ROS_INFO("[MAIN] Position: (%f, %f);\tOrientation: %f deg;\tMin Laser Dist: %f;", 
-            rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), front_laser_dist);
+        ROS_INFO("[MAIN] Position: (%f, %f); Orientation: %f deg; Front Dist: %f; Right Dist: %f; Left Dist: %f;", 
+            rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), front_laser_dist, right_laser_dist, left_laser_dist);
 
         // unexpected hit: move away from hit
         if (bumper_hit)
@@ -224,7 +224,16 @@ int main(int argc, char **argv)
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
             ROS_INFO("[MAIN] Robot in NAV_TO_FRONTIER state");
-            nav.move_to(rob_pos_x + (int(rand()%3) - 1), rob_pos_y + (int(rand()%3) - 1));
+
+            // gen rand nums
+            int delta_x = 0, delta_y = 0;
+            while (delta_x == 0 && delta_y == 0)
+            {
+                delta_x  = (int(rand()%3) - 1);
+                delta_y  = (int(rand()%3) - 1);
+            }
+
+            nav.move_to(rob_pos_x + delta_x, rob_pos_y + delta_y);
 
             // nav.move_to(goal_pos_x, goal_pos_y);
             rob_state = _INIT_; // repeat process

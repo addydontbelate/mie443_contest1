@@ -238,6 +238,8 @@ void Navigator::respond_to_bump()
 
 void Navigator::respond_to_obst()
 {
+    ROS_INFO("[NAV_OBST] Front Dist: %f; Right Dist: %f; Left Dist: %f;", front_laser_dist, right_laser_dist, left_laser_dist);
+
     if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
         right_laser_dist > OBST_DIST_THRESH)
     {
