@@ -199,7 +199,7 @@ int main(int argc, char **argv)
     {
         // update robot state vars
         ros::spinOnce();
-        ROS_INFO("[MAIN] Position: (%f, %f); Orientation: %f deg; Front Dist: %f; Right Dist: %f; Left Dist: %f;", 
+        ROS_INFO("[MAIN] Position: (%f, %f) || Yaw: %f deg || Laser Distance: (Front: %f; Right: %f; Left: %f)", 
             rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw), front_laser_dist, right_laser_dist, left_laser_dist);
 
         // unexpected hit: move away from hit
