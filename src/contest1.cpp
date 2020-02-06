@@ -229,7 +229,6 @@ int main(int argc, char **argv)
         {
             ROS_INFO("[MAIN] Robot in GET_NEW_FRONTIER state");
             rob_state = _NAV_TO_FRONTIER_;
-            rob_state = _INIT_;
         }
         else if (rob_state == _NAV_TO_FRONTIER_)
         {
