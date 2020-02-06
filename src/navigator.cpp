@@ -14,7 +14,7 @@ Navigator::Navigator(ros::NodeHandle* nh)
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
-	ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
+    ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
     
     float initial_yaw = rob_yaw;
 
@@ -49,7 +49,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
             
             angle_turned += fabs(rob_yaw - initial_yaw);
         }
-
+        ROS_INFO("[DEBUG] Calling rotate again!");
         rotate(rad-M_PI, angular_speed, clockwise);
     }
     
@@ -110,7 +110,7 @@ void Navigator::move_to(float goal_x, float goal_y)
     float m_angle = 0.0;
     uint8_t num_tries = 0;
 
-    while (fabs(rob_pos_x - goal_x) > GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) > GOAL_REACH_DIST && 
+    while ((fabs(rob_pos_x - goal_x) > GOAL_REACH_DIST || fabs(rob_pos_y - goal_y) > GOAL_REACH_DIST) && 
         num_tries < NUM_REPLANS) 
     {
         // rotate towards goal
@@ -141,7 +141,7 @@ void Navigator::move_to(float goal_x, float goal_y)
         ROS_INFO("[NAV] Required %d replans so far", num_tries);
         num_tries++;
     }
-    
+    ROS_INFO("Currently %f from goal_x and %f from goal_y", fabs(rob_pos_x - goal_x), fabs(rob_pos_y - goal_y));
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
 
@@ -209,6 +209,7 @@ void Navigator::respond_to_bump()
             bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
         {
             ROS_INFO("[BUMP_HIT] Left + Center bumpers hit. Moving back towards right!");
+            rotate(DEG2RAD(45), MAX_ANG_VEL, CCW);
             move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
             rotate(DEG2RAD(45), MAX_ANG_VEL, CCW);
             move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
@@ -218,6 +219,7 @@ void Navigator::respond_to_bump()
                 bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
         {
             ROS_INFO("[BUMP_HIT] Right + Center bumpers hit. Moving back towards left!");
+            rotate(DEG2RAD(45), MAX_ANG_VEL, CW);
             move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
             rotate(DEG2RAD(45), MAX_ANG_VEL, CW);
             move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
