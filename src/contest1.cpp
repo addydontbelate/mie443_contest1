@@ -206,6 +206,7 @@ int main(int argc, char **argv)
         if (bumper_hit)
         {   
             bumper_hit = false; // reset flag
+            nav.set_obst_reponse();
             nav.respond_to_bump();
 
             // initiate recovery mode

@@ -29,6 +29,7 @@
 #define GOAL_REACH_DIST 0.2 // [m]
 #define SF 1.15             // num; safety factor
 #define NUM_REPLANS 5       // num
+#define NUM_OBST_RESPONSE 10// num
 
 // direction macros
 #define FWD true
@@ -51,26 +52,28 @@ extern uint8_t bumper[NUM_BUMPER];
 class Navigator
 {
  private:
-  float angular_vel;  // <= M_PI/6 [rad/s]
-  float linear_vel;   // <= 0.25 [m/s] 
+   float angular_vel;  // <= M_PI/6 [rad/s]
+   float linear_vel;   // <= 0.25 [m/s]
+   uint8_t num_obst_response; // NUM_OBST_RESPONSE
   
-  // robot velocity publisher
-  ros::Publisher vel_pub;
-  geometry_msgs::Twist rob_vel;
-  void publish_move();
-  void move_straight(float dist, float linear_speed, bool forward);
-  void move_right(float dist, float linear_speed, float angular_speed);
-  void move_left(float dist, float linear_speed, float angular_speed);
- 
+   // robot velocity publisher
+   ros::Publisher vel_pub;
+   geometry_msgs::Twist rob_vel;
+   void publish_move();
+   void move_straight(float dist, float linear_speed, bool forward);
+   void move_right(float dist, float linear_speed, float angular_speed);
+   void move_left(float dist, float linear_speed, float angular_speed);
+   void respond_to_obst();
+
  public:
-  // commands
-  void stop();
-  void move_to(float goal_x, float goal_y);
-  void rotate(float rad, float angular_speed, bool clockwise);
-  void rotate_right(float angular_speed);
-  void rotate_left(float angular_speed);
-  void respond_to_bump();
-  void respond_to_obst();
+   // commands
+   void stop();
+   void move_to(float goal_x, float goal_y);
+   void rotate(float rad, float angular_speed, bool clockwise);
+   void rotate_right(float angular_speed);
+   void rotate_left(float angular_speed);
+   void respond_to_bump();  
+   void set_obst_reponse() { num_obst_response = NUM_OBST_RESPONSE; }
 
    // constructor and destructor
    Navigator(ros::NodeHandle* nh);

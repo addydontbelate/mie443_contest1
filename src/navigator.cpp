@@ -5,6 +5,7 @@ Navigator::Navigator(ros::NodeHandle* nh)
     // init velocities
     angular_vel = 0.0; 
     linear_vel = 0.0;
+    num_obst_response = NUM_OBST_RESPONSE;
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     
@@ -113,6 +114,8 @@ void Navigator::move_to(float goal_x, float goal_y)
     while ((fabs(rob_pos_x - goal_x) > GOAL_REACH_DIST || fabs(rob_pos_y - goal_y) > GOAL_REACH_DIST) && 
         num_tries < NUM_REPLANS) 
     {
+        num_obst_response = NUM_OBST_RESPONSE;
+
         // rotate towards goal
         m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
@@ -173,6 +176,9 @@ void Navigator::rotate_left(float angular_speed)
 
 void Navigator::respond_to_bump()
 {
+    // decrement available responses
+    (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
+
     // get number of hits
     uint8_t num_hits = 0;
     for (uint8_t i = 0; i < NUM_BUMPER; ++i)
@@ -180,173 +186,181 @@ void Navigator::respond_to_bump()
             num_hits++;
     
     ROS_INFO("[BUMP_HIT] Detected %d hits!", num_hits);
-
-    if (num_hits == 1) // one hit only
+    if (num_obst_response > 0)
     {
-        // left: move right
-        if (bumper[0] == kobuki_msgs::BumperEvent::PRESSED)
+        if (num_hits == 1) // one hit only
         {
-            ROS_INFO("[BUMP_HIT] Left bumper hit. Moving right!");
-            move_right(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
+            // left: move right
+            if (bumper[0] == kobuki_msgs::BumperEvent::PRESSED)
+            {
+                ROS_INFO("[BUMP_HIT] Left bumper hit. Moving right!");
+                move_right(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
+            }
+            // center: move back
+            else if (bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
+            {
+                ROS_INFO("[BUMP_HIT] Center bumper hit. Moving back!");
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, BCK);
+            }
+            // right: move left
+            else
+            {
+                ROS_INFO("[BUMP_HIT] Right bumper hit. Moving left!");
+                move_left(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
+            }
         }
-        // center: move back
-        else if (bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
+        else if (num_hits == 2) // two hits
         {
-            ROS_INFO("[BUMP_HIT] Center bumper hit. Moving back!");
-            move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, BCK);
-        }
-        // right: move left
-        else
-        {
-            ROS_INFO("[BUMP_HIT] Right bumper hit. Moving left!");
-            move_left(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
-        }
-    }
-    else if (num_hits == 2) // two hits
-    {
-        // left + center: move back towards right
-        if (bumper[0] == kobuki_msgs::BumperEvent::PRESSED  &&
-            bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
-        {
-            ROS_INFO("[BUMP_HIT] Left + Center bumpers hit. Moving back towards right!");
-            rotate(DEG2RAD(45), MAX_ANG_VEL, CCW);
-            move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
-            rotate(DEG2RAD(45), MAX_ANG_VEL, CCW);
-            move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
-        }
-        // right + center: move back towards left
-        else if (bumper[2] == kobuki_msgs::BumperEvent::PRESSED  &&
+            // left + center: move back towards right
+            if (bumper[0] == kobuki_msgs::BumperEvent::PRESSED  &&
                 bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
-        {
-            ROS_INFO("[BUMP_HIT] Right + Center bumpers hit. Moving back towards left!");
-            rotate(DEG2RAD(45), MAX_ANG_VEL, CW);
-            move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
-            rotate(DEG2RAD(45), MAX_ANG_VEL, CW);
-            move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
+            {
+                ROS_INFO("[BUMP_HIT] Left + Center bumpers hit. Moving back towards right!");
+                rotate(DEG2RAD(45), MAX_ANG_VEL, CCW);
+                move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
+                rotate(DEG2RAD(45), MAX_ANG_VEL, CCW);
+                move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
+            }
+            // right + center: move back towards left
+            else if (bumper[2] == kobuki_msgs::BumperEvent::PRESSED  &&
+                    bumper[1] == kobuki_msgs::BumperEvent::PRESSED)
+            {
+                ROS_INFO("[BUMP_HIT] Right + Center bumpers hit. Moving back towards left!");
+                rotate(DEG2RAD(45), MAX_ANG_VEL, CW);
+                move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
+                rotate(DEG2RAD(45), MAX_ANG_VEL, CW);
+                move_straight(SF*OBST_DIST_THRESH/2, OBST_DET_VEL, BCK);
+            }
+            // right + left (unlikely): move back
+            else
+            {
+                ROS_INFO("[BUMP_HIT] Left + Right bumpers hit. Moving back!");
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, BCK);
+            }
         }
-        // right + left (unlikely): move back
-        else
+        else // all bumpers are hit: move back
         {
-            ROS_INFO("[BUMP_HIT] Left + Right bumpers hit. Moving back!");
-            move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, BCK);
+            ROS_INFO("[BUMP_HIT] All bumpers hit. Moving back!");
+            move_straight(SF*OBST_DIST_THRESH, OBST_HIT_DIST, BCK);
         }
-    }
-    else // all bumpers are hit: move back
-    {
-        ROS_INFO("[BUMP_HIT] All bumpers hit. Moving back!");
-        move_straight(SF*OBST_DIST_THRESH, OBST_HIT_DIST, BCK);
     }
 }
 
 void Navigator::respond_to_obst()
 {
+    // decrement available responses
+    (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
+
     ROS_INFO("[NAV_OBST] Front Dist: %f; Right Dist: %f; Left Dist: %f;", front_laser_dist, right_laser_dist, left_laser_dist);
 
-    if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
-        right_laser_dist > OBST_DIST_THRESH)
+    if (num_obst_response > 0)
     {
-        // no obstacle (unlikely)
-        ROS_INFO("[NAV_OBST] No obstacles around!");
-    }
-    else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
-        right_laser_dist < OBST_DIST_THRESH)
-    {
-        // obstacles on all sides: blocked
-        ROS_INFO("[NAV_OBST] Blocked, rotating and moving back!");
-        rotate(DEG2RAD(180), MAX_ANG_VEL, CW);
-        move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
-    }
-    else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
-        right_laser_dist > OBST_DIST_THRESH)
-    {
-        // obstacle at the front only
-        ROS_INFO("[NAV_OBST] Obstacle in front, moving around!");
-        
-        // obstacle to right farther than left 
-        if (left_laser_dist < right_laser_dist)
+        if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
+            right_laser_dist > OBST_DIST_THRESH)
         {
-            // rotate right relative to the distance from the obstacle
-            rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - front_laser_dist) + 45),
-                 MAX_ANG_VEL, CW);
+            // no obstacle (unlikely)
+            ROS_INFO("[NAV_OBST] No obstacles around!");
+        }
+        else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
+            right_laser_dist < OBST_DIST_THRESH)
+        {
+            // obstacles on all sides: blocked
+            ROS_INFO("[NAV_OBST] Blocked, rotating and moving back!");
+            rotate(DEG2RAD(180), MAX_ANG_VEL, CW);
             move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
         }
-        else
+        else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
+            right_laser_dist > OBST_DIST_THRESH)
         {
-            // rotate left relative to the distance from the obstacle
-            rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - front_laser_dist) + 45),
-                 MAX_ANG_VEL, CCW);
-            move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            // obstacle at the front only
+            ROS_INFO("[NAV_OBST] Obstacle in front, moving around!");
+            
+            // obstacle to right farther than left 
+            if (left_laser_dist < right_laser_dist)
+            {
+                // rotate right relative to the distance from the obstacle
+                rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - front_laser_dist) + 45),
+                    MAX_ANG_VEL, CW);
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            }
+            else
+            {
+                // rotate left relative to the distance from the obstacle
+                rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - front_laser_dist) + 45),
+                    MAX_ANG_VEL, CCW);
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            }
         }
-    }
-    else if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
-        right_laser_dist < OBST_DIST_THRESH)
-    {
-        // obstacle on the right only
-        ROS_INFO("[NAV_OBST] Obstacle at the right, moving towards left!");
-        
-        // obstacle to front farther than left 
-        if (left_laser_dist < front_laser_dist)
+        else if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
+            right_laser_dist < OBST_DIST_THRESH)
         {
-            // rotate left relative to the distance from the obstacle
-            rotate(DEG2RAD((15/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - right_laser_dist) + 30),
-                 MAX_ANG_VEL, CCW);
-            move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            // obstacle on the right only
+            ROS_INFO("[NAV_OBST] Obstacle at the right, moving towards left!");
+            
+            // obstacle to front farther than left 
+            if (left_laser_dist < front_laser_dist)
+            {
+                // rotate left relative to the distance from the obstacle
+                rotate(DEG2RAD((15/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - right_laser_dist) + 30),
+                    MAX_ANG_VEL, CCW);
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            }
+            else
+            {
+                // rotate left relative to the distance from the obstacle
+                rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - right_laser_dist) + 45),
+                    MAX_ANG_VEL, CCW);
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            }
         }
-        else
+        else if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
+            right_laser_dist > OBST_DIST_THRESH)
         {
-            // rotate left relative to the distance from the obstacle
-            rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - right_laser_dist) + 45),
-                 MAX_ANG_VEL, CCW);
-            move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
-        }
-    }
-    else if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
-        right_laser_dist > OBST_DIST_THRESH)
-    {
-        // obstacle on the left only
-        ROS_INFO("[NAV_OBST] Obstacle at the left, moving towards right!");
+            // obstacle on the left only
+            ROS_INFO("[NAV_OBST] Obstacle at the left, moving towards right!");
 
-        // obstacle to front farther than right 
-        if (right_laser_dist < front_laser_dist)
+            // obstacle to front farther than right 
+            if (right_laser_dist < front_laser_dist)
+            {
+                // rotate right relative to the distance from the obstacle
+                rotate(DEG2RAD((15/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - left_laser_dist) + 30),
+                    MAX_ANG_VEL, CW);
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            }
+            else
+            {
+                // rotate right relative to the distance from the obstacle
+                rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - left_laser_dist) + 45),
+                    MAX_ANG_VEL, CW);
+                move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            }
+        }
+        else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
+            right_laser_dist < OBST_DIST_THRESH)
         {
-            // rotate right relative to the distance from the obstacle
-            rotate(DEG2RAD((15/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - left_laser_dist) + 30),
-                 MAX_ANG_VEL, CW);
+            // obstacles on the front and right only
+            ROS_INFO("[NAV_OBST] Obstacles on front and right, moving towards left!");
+            move_left(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
+        }
+        else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
+            right_laser_dist > OBST_DIST_THRESH)
+        {
+            // obstacles on the front and left only
+            ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
+            move_right(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
+        }
+        else if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
+            right_laser_dist < OBST_DIST_THRESH)
+        {
+            // obstacles on the right and left only
+            ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
             move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
         }
-        else
+        else 
         {
-            // rotate right relative to the distance from the obstacle
-            rotate(DEG2RAD((45/(OBST_DIST_THRESH - OBST_HIT_DIST))*(OBST_DIST_THRESH - left_laser_dist) + 45),
-                 MAX_ANG_VEL, CW);
-            move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
+            // unknown state
+            stop();   
         }
-    }
-    else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist > OBST_DIST_THRESH && 
-        right_laser_dist < OBST_DIST_THRESH)
-    {
-        // obstacles on the front and right only
-        ROS_INFO("[NAV_OBST] Obstacles on front and right, moving towards left!");
-        move_left(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
-    }
-    else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
-        right_laser_dist > OBST_DIST_THRESH)
-    {
-        // obstacles on the front and left only
-        ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
-        move_right(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
-    }
-    else if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
-        right_laser_dist < OBST_DIST_THRESH)
-    {
-        // obstacles on the right and left only
-        ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
-        move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
-    }
-    else 
-    {
-        // unknown state
-        stop();   
     }
 }
 
