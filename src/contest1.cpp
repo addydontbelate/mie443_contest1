@@ -13,11 +13,8 @@
 #include <stdio.h>
 #include <cmath>
 #include <chrono>
-#include "wavefront_detector.h"
 #include "navigator.h"
-#include "visualizer.h"
-#include <map>
-#include <array>
+#include "csrw.h"
 
 // timer macros
 #define TIME std::chrono::time_point<std::chrono::system_clock>
@@ -27,13 +24,16 @@
 #define addydontbelate(time_elapsed) ((time_elapsed <= TIME_LIMIT) ? true : false) 
 
 // fsm states
-#define _INIT_ 0
-#define _RECOVERY_ 1
-#define _GET_NEW_FRONTIER_ 2
-#define _NAV_TO_FRONTIER_ 3
+#define _INIT_ 0            // initialize
+#define _RECOVERY_ 1        // recovery
+#define _GET_NEW_CRNR_ 2    // get new corner
+#define _RE_NAV_FRST_CRNR_ 3// re-navigate navigate to first corner
+#define _NAV_TO_CNTR_ 4     // navigate to center
+#define _DO_RW_ 5           // do random walk
 
 // global robot state variables
-int rob_state = _INIT_;
+uint8_t rob_state = _INIT_;
+uint8_t prev_rob_state = _INIT_; 
 float rob_yaw = 0.0;
 float rob_pos_x = 0.0;
 float rob_pos_y = 0.0;
@@ -45,20 +45,9 @@ float right_laser_dist = std::numeric_limits<float>::infinity();
 int32_t n_lasers = 0;
 int32_t desired_n_lasers = 0;
 int32_t view_angle = 10;        // +-10 deg from heading angle
-bool detect_frontier = false;   // wfd enable flag
 bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
     kobuki_msgs::BumperEvent::RELEASED, kobuki_msgs::BumperEvent::RELEASED};
-
-// std::map<int, std::array<float, 2>> nav_states;
-// nav_states.insert(std::pair<int,std::array<float,2>>(0,{0.0,10.0})); // left
-// nav_states.insert(std::pair<int,std::array<float,2>>(1,{10.0, 0.0}));// up
-// nav_states.insert(std::pair<int,std::array<float,2>>(2,{0.0, -10.0})); // right
-// nav_states.insert(std::pair<int,std::array<float,2>>(3,{-10.0,0.0})); // do
-// int current_nav_state = 0;
-
-// global object for custom visualization
-Visualizer viz;
 
 /**
  * ROS callback to record bumper hit.
@@ -109,68 +98,6 @@ void odom_callback(const nav_msgs::Odometry::ConstPtr& msg)
     rob_yaw = tf::getYaw(msg->pose.pose.orientation);
 }
 
-/**
- * ROS callback to update map and get desirable frontier's median.
- */
-void map_callback(const nav_msgs::OccupancyGrid& map)
-{
-    float resolution = map.info.resolution;
-    float map_x = map.info.origin.position.x/resolution;
-    float map_y = map.info.origin.position.y/resolution;
-    float x = 0. - map_x;
-    float y = 0. - map_y;
-
-    if (detect_frontier)
-    {
-        // init detector object
-        Wavefront_Detector wfd;
-
-        // get frontiers
-        std::vector<std::vector<int>> frontiers = wfd.frontiers(map, map.info.height, 
-            map.info.width, x + (y * map.info.width));
-        ROS_INFO("[WFD] Found %d frontiers", static_cast<int>(frontiers.size()));
-
-        // visualize frontiers
-        viz.visualize_frontier();
-
-        // get frontier medians
-        std::vector<int> frontier_median;
-        for (int i = 0; i < frontiers.size(); i++)
-            frontier_median.push_back(wfd.frontier_median(frontiers[i]));
-
-        // corresponding position of median on map
-        std::vector<geometry_msgs::Point> frontier_pos(frontier_median.size());
-        
-        for (int i = 0; i < frontier_median.size(); i++)
-        {
-            frontier_pos[i].x = ((frontier_median[i] % map.info.width) + map_x)*resolution;
-            frontier_pos[i].y = ((frontier_median[i] / map.info.width) + map_y)*resolution;
-            frontier_pos[i].z = 0;
-        }
-
-        // get nearest frontier
-        int nf_idx = wfd.nearest_frontier_idx(frontier_pos);
-        ROS_INFO("[WFD] Nearest frontier index is: %d", nf_idx);
-
-        //  update goal position
-        if (!frontier_pos.empty())
-        {
-            goal_pos_x = frontier_pos[nf_idx].x;
-            goal_pos_y = frontier_pos[nf_idx].y;
-            ROS_INFO("[WFD] Goal position set to: (%f, %f)", goal_pos_x, goal_pos_y);
-        }
-        else
-        {
-            goal_pos_x = rob_pos_x;
-            goal_pos_y = rob_pos_y;
-            ROS_INFO("[WFD] Frontier not found! Goal set to: (%f, %f)", goal_pos_x, goal_pos_y);
-        }
-
-        detect_frontier = false; // set to true when needing a new frontier
-        rob_state = _NAV_TO_FRONTIER_;
-    }
-}
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "addydontbelate_explorer");
@@ -182,9 +109,9 @@ int main(int argc, char **argv)
     ros::Subscriber odom_sub = nh.subscribe("odom", 1, &odom_callback);
     ros::Subscriber map_sub = nh.subscribe("map", 1, &map_callback);
 
-    // init navigator object and visualizer topic
+    // init navigator and csrw objects
     Navigator nav(&nh);
-    viz.init(&nh);
+    CSRW csrw;
 
     // init loop rate
     ros::Rate loop_rate(10);
@@ -218,33 +145,24 @@ int main(int argc, char **argv)
         {
             ROS_INFO("[MAIN] Robot in INIT state");
             nav.rotate(DEG2RAD(360), MAX_ANG_VEL, CW);
-            rob_state = _GET_NEW_FRONTIER_;
-            // detect_frontier = true;
+            rob_state = _GET_NEW_CRNR_;
+            prev_rob_state = _INIT_;
         }
         else if (rob_state == _RECOVERY_)
         {
             ROS_INFO("[MAIN] Robot in RECOVERY state");
             rob_state = _INIT_;
         }
-        else if (rob_state == _GET_NEW_FRONTIER_)
+        else if (rob_state == _GET_NEW_CRNR_)
         {
             ROS_INFO("[MAIN] Robot in GET_NEW_FRONTIER state");
             rob_state = _NAV_TO_FRONTIER_;
         }
-        else if (rob_state == _NAV_TO_FRONTIER_)
+        else if (rob_state == _NAV_TO_CNTR_)
         {
             ROS_INFO("[MAIN] Robot in NAV_TO_FRONTIER state");
 
-
-            // 1 - Clockwise 
-            // float goal_pos_x, goal_pos_y;
-            // goal_pos_x = nav_states[current_nav_state][0];
-            // goal_pos_y = nav_states[current_nav_state][1];
-            // current_nav_state = (current_nav_state+1) % 4;
-            // nav.move_to(goal_pos_x, goal_pos_y);
-
             // 2 - Random walk
-
             // gen rand nums
             int delta_x = 0, delta_y = 0;
             while (delta_x == 0 && delta_y == 0)
@@ -255,6 +173,10 @@ int main(int argc, char **argv)
             nav.move_to(rob_pos_x + delta_x, rob_pos_y + delta_y);
             
             rob_state = _INIT_; // repeat process
+        }
+        else if (_DO_RW_)
+        {
+
         }
         else // invalid state stored
         {
