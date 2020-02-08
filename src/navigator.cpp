@@ -5,7 +5,7 @@ Navigator::Navigator(ros::NodeHandle* nh)
     // init velocities
     angular_vel = 0.0; 
     linear_vel = 0.0;
-    num_obst_response = NUM_OBST_RESPONSE;
+    num_obst_response = OBST_RESPONSE_LIM;
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     
@@ -114,7 +114,7 @@ void Navigator::move_to(float goal_x, float goal_y)
     while ((fabs(rob_pos_x - goal_x) > GOAL_REACH_DIST || fabs(rob_pos_y - goal_y) > GOAL_REACH_DIST) && 
         num_tries < NUM_REPLANS) 
     {
-        num_obst_response = NUM_OBST_RESPONSE;
+        num_obst_response = OBST_RESPONSE_LIM;
 
         // rotate towards goal
         m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);

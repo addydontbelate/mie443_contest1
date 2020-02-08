@@ -29,7 +29,7 @@
 #define GOAL_REACH_DIST 0.2 // [m]
 #define SF 1.15             // num; safety factor
 #define NUM_REPLANS 5       // num
-#define NUM_OBST_RESPONSE 10// num
+#define OBST_RESPONSE_LIM 10// num
 
 // direction macros
 #define FWD true
@@ -54,7 +54,7 @@ class Navigator
  private:
    float angular_vel;  // <= M_PI/6 [rad/s]
    float linear_vel;   // <= 0.25 [m/s]
-   uint8_t num_obst_response; // NUM_OBST_RESPONSE
+   uint8_t num_obst_response; // OBST_RESPONSE_LIM
   
    // robot velocity publisher
    ros::Publisher vel_pub;
@@ -73,7 +73,7 @@ class Navigator
    void rotate_right(float angular_speed);
    void rotate_left(float angular_speed);
    void respond_to_bump();  
-   void set_obst_reponse() { num_obst_response = NUM_OBST_RESPONSE; }
+   void set_obst_reponse() { num_obst_response = OBST_RESPONSE_LIM; }
 
    // constructor and destructor
    Navigator(ros::NodeHandle* nh);
