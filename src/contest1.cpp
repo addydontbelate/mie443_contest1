@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <cmath>
 #include <chrono>
-#include "navigator.h"
 #include "csrw.h"
 
 // timer macros
@@ -24,12 +23,14 @@
 #define addydontbelate(time_elapsed) ((time_elapsed <= TIME_LIMIT) ? true : false) 
 
 // fsm states
-#define _INIT_ 0            // initialize
-#define _RECOVERY_ 1        // recovery
-#define _GET_NEW_CRNR_ 2    // get new corner
-#define _RE_NAV_FRST_CRNR_ 3// re-navigate navigate to first corner
-#define _NAV_TO_CNTR_ 4     // navigate to center
-#define _DO_RW_ 5           // do random walk
+#define _INIT_ 0             // initialize
+#define _RECOVERY_ 1         // recovery
+#define _GET_NEW_CRNR_ 2     // get new corner
+#define _NAV_TO_CRNR_ 3      // navigate to corner
+#define _NAV_TO_CNTR_ 4      // navigate to center
+#define _DO_RW_ 5            // do random walk
+
+// #define _RE_NAV_FRST_CRNR_ 4 // re-navigate navigate to first corner
 
 // global robot state variables
 uint8_t rob_state = _INIT_;
@@ -37,8 +38,10 @@ uint8_t prev_rob_state = _INIT_;
 float rob_yaw = 0.0;
 float rob_pos_x = 0.0;
 float rob_pos_y = 0.0;
-float goal_pos_x = rob_pos_x;
-float goal_pos_y = rob_pos_y;
+float min_pos_x = std::numeric_limits<float>::infinity();
+float max_pos_x = -std::numeric_limits<float>::infinity();
+float min_pos_y = std::numeric_limits<float>::infinity();
+float max_pos_y = -std::numeric_limits<float>::infinity();
 float front_laser_dist = std::numeric_limits<float>::infinity();
 float left_laser_dist = std::numeric_limits<float>::infinity();
 float right_laser_dist = std::numeric_limits<float>::infinity();
@@ -107,11 +110,9 @@ int main(int argc, char **argv)
     ros::Subscriber bumper_sub = nh.subscribe("mobile_base/events/bumper", 10, &bumper_callback);
     ros::Subscriber laser_sub = nh.subscribe("scan", 10, &laser_callback);
     ros::Subscriber odom_sub = nh.subscribe("odom", 1, &odom_callback);
-    ros::Subscriber map_sub = nh.subscribe("map", 1, &map_callback);
 
-    // init navigator and csrw objects
-    Navigator nav(&nh);
-    CSRW csrw;
+    // init csrw object
+    CSRW csrw(&nh);
 
     // init loop rate
     ros::Rate loop_rate(10);
@@ -119,7 +120,7 @@ int main(int argc, char **argv)
     // contest count down timer
     TIME start = CLOCK::now();
     uint64_t seconds_elapsed = 0;
-    srand(time(0)); // random walk
+    srand(time(0)); // init w time seed for random walk
 
     // robot loop
     while(ros::ok() && addydontbelate(seconds_elapsed)) 
@@ -133,56 +134,78 @@ int main(int argc, char **argv)
         if (bumper_hit)
         {   
             bumper_hit = false; // reset flag
-            nav.set_obst_reponse();
-            nav.respond_to_bump();
+            csrw.respond_to_bump();
 
             // initiate recovery mode
             rob_state = _RECOVERY_;
+            prev_rob_state = prev_rob_state; // keep track of state coming from
         }
 
         // robot fsm
         if (rob_state == _INIT_)
         {
-            ROS_INFO("[MAIN] Robot in INIT state");
-            nav.rotate(DEG2RAD(360), MAX_ANG_VEL, CW);
-            rob_state = _GET_NEW_CRNR_;
-            prev_rob_state = _INIT_;
+            ROS_INFO("[MAIN] Robot in INITIAL state");
+            csrw.rotate();
+
+            if (prev_rob_state == _DO_RW_)
+            {
+                rob_state = _DO_RW_;
+                prev_rob_state = _INIT_;
+            }
+            else
+            {
+                rob_state = _GET_NEW_CRNR_;
+                prev_rob_state = _INIT_;   
+            }
         }
         else if (rob_state == _RECOVERY_)
         {
             ROS_INFO("[MAIN] Robot in RECOVERY state");
             rob_state = _INIT_;
+            prev_rob_state = prev_rob_state; // keep track of where coming from
         }
         else if (rob_state == _GET_NEW_CRNR_)
         {
-            ROS_INFO("[MAIN] Robot in GET_NEW_FRONTIER state");
-            rob_state = _NAV_TO_FRONTIER_;
+            ROS_INFO("[MAIN] Robot in GET_NEW_CORNER state");
+            csrw.set_goal(); 
+
+            if (!csrw.crnrs_complete())
+            {
+                rob_state = _NAV_TO_CRNR_;
+                prev_rob_state = _GET_NEW_CRNR_;
+            }
+            else
+            {
+                rob_state = _NAV_TO_CNTR_;
+                prev_rob_state = _GET_NEW_CRNR_;
+            }
+        }
+        else if (rob_state == _NAV_TO_CRNR_)
+        {
+            ROS_INFO("[MAIN] Robot in NAVIGATE_TO_CORNER state");
+            csrw.go_to_goal();
+            rob_state = _GET_NEW_CRNR_;
+            prev_rob_state = _NAV_TO_CRNR_;
         }
         else if (rob_state == _NAV_TO_CNTR_)
         {
-            ROS_INFO("[MAIN] Robot in NAV_TO_FRONTIER state");
-
-            // 2 - Random walk
-            // gen rand nums
-            int delta_x = 0, delta_y = 0;
-            while (delta_x == 0 && delta_y == 0)
-            {
-                delta_x  = (int(rand()%3) - 1);
-                delta_y  = (int(rand()%3) - 1);
-            }
-            nav.move_to(rob_pos_x + delta_x, rob_pos_y + delta_y);
-            
-            rob_state = _INIT_; // repeat process
+            ROS_INFO("[MAIN] Robot in NAVIGATE_TO_CENTER state");
+            csrw.go_to_goal();
+            rob_state = _DO_RW_;
+            prev_rob_state = _NAV_TO_CNTR_;
         }
         else if (_DO_RW_)
         {
-
+            ROS_INFO("[MAIN] Robot in RANDOM_WALK state");
+            csrw.do_rw();
+            rob_state = _INIT_;
+            prev_rob_state = _DO_RW_;
         }
         else // invalid state stored
         {
             ROS_INFO("[MAIN] Robot in INVALID state! Starting RECOVERY");
             rob_state = _RECOVERY_;
-            nav.stop(); // stop robot movement
+            csrw.pause(); // stop robot movement
         }
 
         // update the timer
@@ -192,6 +215,6 @@ int main(int argc, char **argv)
 
     // time up: stop
     ROS_INFO("[MAIN] Time up! Stopping.");
-    nav.stop();
+    csrw.pause();
     return 0;
 }

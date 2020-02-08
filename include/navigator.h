@@ -41,8 +41,10 @@
 extern float rob_yaw;
 extern float rob_pos_x;
 extern float rob_pos_y;
-extern float goal_pos_x;
-extern float goal_pos_y;
+extern float min_pos_x;
+extern float max_pos_x;
+extern float min_pos_y;
+extern float max_pos_y;
 extern bool bumper_hit;
 extern float front_laser_dist;
 extern float left_laser_dist;
@@ -64,19 +66,21 @@ class Navigator
    void move_right(float dist, float linear_speed, float angular_speed);
    void move_left(float dist, float linear_speed, float angular_speed);
    void respond_to_obst();
+   void update_global_extremes();
 
  public:
    // commands
+   void init(ros::NodeHandle* nh);
    void stop();
    void move_to(float goal_x, float goal_y);
    void rotate(float rad, float angular_speed, bool clockwise);
    void rotate_right(float angular_speed);
    void rotate_left(float angular_speed);
    void respond_to_bump();  
-   void set_obst_reponse() { num_obst_response = OBST_RESPONSE_LIM; }
+   void set_response_limit() { num_obst_response = OBST_RESPONSE_LIM; }
 
-   // constructor and destructor
-   Navigator(ros::NodeHandle* nh);
+   // destructor
+   Navigator();
    ~Navigator() {};
 };
 

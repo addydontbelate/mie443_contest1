@@ -1,16 +1,20 @@
 #include "navigator.h"
 
-Navigator::Navigator(ros::NodeHandle* nh)
+void Navigator::init(ros::NodeHandle* nh)
 {
-    // init velocities
-    angular_vel = 0.0; 
-    linear_vel = 0.0;
-    num_obst_response = OBST_RESPONSE_LIM;
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     
     // init velocity publisher
     vel_pub = nh->advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
+}
+
+Navigator::Navigator()
+{
+    // init velocities
+    angular_vel = 0.0;
+    linear_vel = 0.0;
+    num_obst_response = OBST_RESPONSE_LIM;
 }
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
@@ -61,7 +65,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 
 void Navigator::move_straight(float dist, float linear_speed, bool forward)
 {
-	//initial pose before moving
+	// initial pose before moving
 	float initial_pos_x = rob_pos_x;
     float initial_pos_y = rob_pos_y;
 
@@ -79,6 +83,9 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
     {
         publish_move();
 		ros::spinOnce();
+
+        // update global position extremes
+        update_global_extremes();
 
         if (bumper_hit)
         {   
@@ -376,4 +383,12 @@ void Navigator::publish_move()
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     vel_pub.publish(rob_vel);
+}
+
+void Navigator::update_global_extremes()
+{
+    if(rob_pos_x > max_pos_x) {max_pos_x = rob_pos_x; }
+    else if(rob_pos_x < min_pos_x) {min_pos_x = rob_pos_x; }
+    else if(rob_pos_y > max_pos_y) {max_pos_y = rob_pos_y; }
+    else if(rob_pos_y < min_pos_y) {min_pos_y = rob_pos_y; }
 }
