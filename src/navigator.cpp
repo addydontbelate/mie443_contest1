@@ -434,10 +434,31 @@ void Navigator::follow_obst()
         return;
 
     if (front_laser_dist < OBST_DIST_THRESH)
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
-    else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
     {
-        // move straight by BUG_STEP
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+        nudge();
+    }
+    else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
+    {   
+        nudge();   
+    }
+    else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
+    {    
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CCW); // rotate left
+        nudge();
+    }
+    else
+    {
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+        nudge();
+    }
+    
+    update_time();
+}
+
+void Navigator::nudge()
+{
+    // move straight by BUG_STEP
         float initial_pos_x = rob_pos_x;
         float initial_pos_y = rob_pos_y;
 
@@ -460,14 +481,8 @@ void Navigator::follow_obst()
             dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
                 pow((rob_pos_y - initial_pos_y), 2));
         }
+
         stop();
-    }
-    else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CCW); // rotate left
-    else 
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
-    
-    update_time();
 }
 
 // TODO: have a turn bias: to be passed 
