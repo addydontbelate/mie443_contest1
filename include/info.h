@@ -1,6 +1,3 @@
-#ifndef INCLUDE_INFO_H
-#define INCLUDE_INFO_H
-
 // angle conversion macros
 #define RAD2DEG(rad) ((rad) * 180./M_PI)
 #define DEG2RAD(deg) ((deg) * M_PI/180.)
