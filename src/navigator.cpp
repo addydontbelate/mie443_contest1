@@ -2,6 +2,9 @@
 
 void Navigator::init(ros::NodeHandle* nh)
 {
+    start = CLOCK::now();
+    seconds_elapsed = 0;
+
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     
@@ -20,7 +23,9 @@ Navigator::Navigator()
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
     // ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
-    
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     float initial_yaw = rob_yaw;
 
     if (clockwise)
@@ -58,12 +63,16 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
     }
     
     stop();
+    update_time();
 
     // ROS_INFO("[NAV] Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
 }
 
 void Navigator::move_straight(float dist, float linear_speed, bool forward, bool reactive_nav_enabled)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
 	// initial pose before moving
 	float initial_pos_x = rob_pos_x;
     float initial_pos_y = rob_pos_y;
@@ -112,10 +121,14 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward, bool
 	}
 
 	stop();
+    update_time();
 }
 
 void Navigator::move_to(float goal_x, float goal_y) 
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     ROS_INFO("[NAV] Currently at (%f, %f); Moving to (%f, %f);", rob_pos_x, rob_pos_y, goal_x, goal_y);
     uint8_t num_tries = 0;
     float initial_pos_x = rob_pos_x;
@@ -142,36 +155,56 @@ void Navigator::move_to(float goal_x, float goal_y)
         bug_nav(goal_x, goal_y);
     
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+    update_time();
 }
 
 void Navigator::move_right(float dist, float linear_speed, float angular_speed)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_right(angular_speed);
     move_straight(dist, linear_speed, FWD);
     // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+    update_time();
 }
 
 void Navigator::move_left(float dist, float linear_speed, float angular_speed)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_left(angular_speed);
     move_straight(dist, linear_speed, FWD);
     // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+    update_time();
 }
 
 void Navigator::rotate_right(float angular_speed)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     rotate(DEG2RAD(90), angular_speed, CW);
+    update_time();
 }
 
 void Navigator::rotate_left(float angular_speed)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     rotate(DEG2RAD(90), angular_speed, CCW);
+    update_time();
 }
 
 void Navigator::respond_to_bump()
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     // decrement available responses
     (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
 
@@ -240,10 +273,15 @@ void Navigator::respond_to_bump()
             move_straight(SF*OBST_DIST_THRESH, OBST_HIT_DIST, BCK);
         }
     }
+
+    update_time();
 }
 
 void Navigator::respond_to_obst()
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     // decrement available responses
     (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
 
@@ -255,13 +293,13 @@ void Navigator::respond_to_obst()
             right_laser_dist > OBST_DIST_THRESH)
         {
             // no obstacle (unlikely)
-            ROS_INFO("[NAV_OBST] No obstacles around!");
+            // ROS_INFO("[NAV_OBST] No obstacles around!");
         }
         else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
             right_laser_dist < OBST_DIST_THRESH)
         {
             // obstacles on all sides: blocked
-            ROS_INFO("[NAV_OBST] Blocked, rotating and moving back!");
+            // ROS_INFO("[NAV_OBST] Blocked, rotating and moving back!");
             rotate(DEG2RAD(180), MAX_ANG_VEL, CW);
             move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
         }
@@ -269,7 +307,7 @@ void Navigator::respond_to_obst()
             right_laser_dist > OBST_DIST_THRESH)
         {
             // obstacle at the front only
-            ROS_INFO("[NAV_OBST] Obstacle in front, moving around!");
+            // ROS_INFO("[NAV_OBST] Obstacle in front, moving around!");
             
             // obstacle to right farther than left 
             if (left_laser_dist < right_laser_dist)
@@ -291,7 +329,7 @@ void Navigator::respond_to_obst()
             right_laser_dist < OBST_DIST_THRESH)
         {
             // obstacle on the right only
-            ROS_INFO("[NAV_OBST] Obstacle at the right, moving towards left!");
+            // ROS_INFO("[NAV_OBST] Obstacle at the right, moving towards left!");
             
             // obstacle to front farther than left 
             if (left_laser_dist < front_laser_dist)
@@ -313,7 +351,7 @@ void Navigator::respond_to_obst()
             right_laser_dist > OBST_DIST_THRESH)
         {
             // obstacle on the left only
-            ROS_INFO("[NAV_OBST] Obstacle at the left, moving towards right!");
+            // ROS_INFO("[NAV_OBST] Obstacle at the left, moving towards right!");
 
             // obstacle to front farther than right 
             if (right_laser_dist < front_laser_dist)
@@ -335,32 +373,39 @@ void Navigator::respond_to_obst()
             right_laser_dist < OBST_DIST_THRESH)
         {
             // obstacles on the front and right only
-            ROS_INFO("[NAV_OBST] Obstacles on front and right, moving towards left!");
+            // ROS_INFO("[NAV_OBST] Obstacles on front and right, moving towards left!");
             move_left(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
         }
         else if (front_laser_dist < OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
             right_laser_dist > OBST_DIST_THRESH)
         {
             // obstacles on the front and left only
-            ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
+            // ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
             move_right(SF*OBST_DIST_THRESH, OBST_DET_VEL, MAX_ANG_VEL);
         }
         else if (front_laser_dist > OBST_DIST_THRESH && left_laser_dist < OBST_DIST_THRESH && 
             right_laser_dist < OBST_DIST_THRESH)
         {
             // obstacles on the right and left only
-            ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
+            // ROS_INFO("[NAV_OBST] Obstacles on front and left, moving towards right!");
             move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
         }
         else 
             stop(); // unknown state   
     }
+
+    update_time();
 }
 
 void Navigator::bug_nav(float goal_x, float goal_y)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     while (!GOAL_IN_REACH(goal_x, goal_y))
     {
+        ROS_INFO("[BUG_NAV] Started bug 2 algorithm!");
+
         // orient to goal
         float m_angle = orient_to(goal_x, goal_y);
 
@@ -380,10 +425,14 @@ void Navigator::bug_nav(float goal_x, float goal_y)
             follow_obst();
     }
 
+    update_time();
 }
 
 void Navigator::follow_obst()
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     if (front_laser_dist < OBST_DIST_THRESH)
         rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
     else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
@@ -417,6 +466,8 @@ void Navigator::follow_obst()
         rotate(BUG_STEP/2, MAX_ANG_VEL, CCW); // rotate left
     else 
         rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+    
+    update_time();
 }
 
 // TODO: have a turn bias: to be passed 
@@ -428,10 +479,16 @@ void Navigator::follow_obst()
 // best estimate of the corners now!
 bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     // if just encountered obstacle, return false
     if (rob_pos_x == obst_pos_x && rob_pos_y == obst_pos_y)
+    {
+        update_time();
         return false;
-    
+    }
+
     float curr_angle = atan2f(goal_y-rob_pos_y, goal_x-rob_pos_x);
     
     float prev_dist = sqrt(pow(obst_pos_y-goal_x, 2) + pow(obst_pos_y-goal_y, 2));
@@ -440,13 +497,20 @@ bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
     // if not near the initial obstacle encounter coordinates and on the m_line, leave
     if (fabs(curr_angle - m_angle) < BUG_TOL && !GOAL_IN_REACH(obst_pos_x, obst_pos_y))
         if (curr_dist < prev_dist)
+        {
+            update_time();
             return true;
-    
+        }
+
+    update_time();
     return false;
 }
 
 float Navigator::orient_to(float goal_x, float goal_y)
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     // rotate towards goal
     float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
@@ -467,25 +531,37 @@ float Navigator::orient_to(float goal_x, float goal_y)
             rotate(m_angle + rob_yaw, MAX_ANG_VEL, CW);
     }
 
+    update_time();
     return m_angle;
 }
 
 void Navigator::stop()
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     rob_vel.angular.z = 0.0;
     rob_vel.linear.x = 0.0;
     publish_move();
+    update_time();
 }
 
 void Navigator::publish_move() 
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     vel_pub.publish(rob_vel);
+    update_time();
 }
 
 void Navigator::update_global_extremes()
 {
+    if (!addydontbelate(seconds_elapsed))
+        return;
+
     if (rob_pos_x > max_pos_x) 
         max_pos_x = rob_pos_x;
     else if (rob_pos_x < min_pos_x) 
@@ -494,4 +570,11 @@ void Navigator::update_global_extremes()
         max_pos_y = rob_pos_y;
     else if (rob_pos_y < min_pos_y) 
         min_pos_y = rob_pos_y;
+    
+    update_time();
+}
+
+void Navigator::update_time()
+{
+    seconds_elapsed = TIME_S(CLOCK::now()-start).count();
 }

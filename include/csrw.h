@@ -17,7 +17,7 @@
 #define CNTR 6
 #define RW 7
 
-#define EXTRM_DIST 2.5 //10.0 // [m] extreme distance
+#define EXTRM_DIST 10.0 // [m] extreme distance
 
 // global robot state variables
 extern float rob_yaw;
