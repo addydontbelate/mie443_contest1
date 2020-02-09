@@ -26,16 +26,27 @@
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m] 
 #define OBST_DIST_THRESH 0.5// [m]
-#define GOAL_REACH_DIST 0.2 // [m]
+#define GOAL_REACH_DIST 0.15// [m]
 #define SF 1.15             // num; safety factor
-#define NUM_REPLANS 5       // num
-#define OBST_RESPONSE_LIM 10// num
+#define NUM_REPLANS 3       // num
+#define OBST_RESPONSE_LIM 5 // num
 
 // direction macros
 #define FWD true
 #define BCK false
 #define CW true
 #define CCW false
+
+// reactive navigation macros
+#define DISABLE_REACTIVE_NAV false
+#define ENABLE_REACTIVE_NAV true
+
+// bug 2 algorithm tolerance
+#define BUG_TOL 0.1
+#define BUG_STEP 0.25
+
+// macro for goal within reach
+#define GOAL_IN_REACH(goal_x, goal_y) (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST || fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST)
 
 // global robot state variables
 extern float rob_yaw;
@@ -56,17 +67,23 @@ class Navigator
  private:
    float angular_vel;  // <= M_PI/6 [rad/s]
    float linear_vel;   // <= 0.25 [m/s]
+   float obst_pos_x;
+   float obst_pos_y;
    uint8_t num_obst_response; // OBST_RESPONSE_LIM
   
    // robot velocity publisher
    ros::Publisher vel_pub;
    geometry_msgs::Twist rob_vel;
    void publish_move();
-   void move_straight(float dist, float linear_speed, bool forward);
+   void move_straight(float dist, float linear_speed, bool forward, bool reactive_nav_enabled = ENABLE_REACTIVE_NAV);
    void move_right(float dist, float linear_speed, float angular_speed);
    void move_left(float dist, float linear_speed, float angular_speed);
    void respond_to_obst();
+   void bug_nav(float goal_x, float goal_y);
    void update_global_extremes();
+   float orient_to(float goal_x, float goal_y);
+   void follow_obst();
+   bool leave_obst(float m_angle, float goal_x, float goal_y);
 
  public:
    // commands

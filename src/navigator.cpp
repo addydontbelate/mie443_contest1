@@ -54,7 +54,6 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
             
             angle_turned += fabs(rob_yaw - initial_yaw);
         }
-        // ROS_INFO("[DEBUG] Calling rotate again!");
         rotate(rad-M_PI, angular_speed, clockwise);
     }
     
@@ -63,7 +62,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
     // ROS_INFO("[NAV] Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
 }
 
-void Navigator::move_straight(float dist, float linear_speed, bool forward)
+void Navigator::move_straight(float dist, float linear_speed, bool forward, bool reactive_nav_enabled)
 {
 	// initial pose before moving
 	float initial_pos_x = rob_pos_x;
@@ -99,7 +98,10 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
         {
             // reactive navigation
             ROS_INFO("[NAV] Too close to the walls, moving away!");
-            respond_to_obst();
+            if (reactive_nav_enabled)
+                respond_to_obst();
+            else
+                stop();
             return;
         }
 
@@ -115,33 +117,16 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward)
 void Navigator::move_to(float goal_x, float goal_y) 
 {
     ROS_INFO("[NAV] Currently at (%f, %f); Moving to (%f, %f);", rob_pos_x, rob_pos_y, goal_x, goal_y);
-    float m_angle = 0.0;
     uint8_t num_tries = 0;
+    float initial_pos_x = rob_pos_x;
+    float initial_pos_y = rob_pos_y;
 
-    while ((fabs(rob_pos_x - goal_x) > GOAL_REACH_DIST || fabs(rob_pos_y - goal_y) > GOAL_REACH_DIST) && 
-        num_tries < NUM_REPLANS) 
+    while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS) 
     {
         num_obst_response = OBST_RESPONSE_LIM;
 
-        // rotate towards goal
-        m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
-
-        if (goal_y > 0) // goal ccw
-        {  
-            if (rob_yaw > 0)
-                (rob_yaw - m_angle > 0) ? rotate(rob_yaw - m_angle, MAX_ANG_VEL, CW) : 
-                    rotate(m_angle - rob_yaw, MAX_ANG_VEL, CCW);
-            else
-                rotate(m_angle + rob_yaw, MAX_ANG_VEL, CCW);
-        }
-        else // goal cw
-        {
-            if (rob_yaw < 0)
-                (rob_yaw - m_angle < 0) ? rotate(fabs(rob_yaw - m_angle), MAX_ANG_VEL, CCW) : 
-                    rotate(fabs(m_angle - rob_yaw), MAX_ANG_VEL, CW);
-            else
-                rotate(m_angle + rob_yaw, MAX_ANG_VEL, CW);
-        }
+        // orient towards goal
+        orient_to(goal_x, goal_y);
 
         // move straight to goal
         float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
@@ -151,6 +136,10 @@ void Navigator::move_to(float goal_x, float goal_y)
         ROS_INFO("[NAV] Required %d replans so far", num_tries);
         num_tries++;
     }
+
+    // if still not reached goal and exceeded replan limit: initiate bug 2 navigation algorithm
+    if (!GOAL_IN_REACH(goal_x, goal_y) && num_tries >= NUM_REPLANS)
+        bug_nav(goal_x, goal_y);
     
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
@@ -364,11 +353,121 @@ void Navigator::respond_to_obst()
             move_straight(SF*OBST_DIST_THRESH, OBST_DET_VEL, FWD);
         }
         else 
-        {
-            // unknown state
-            stop();   
-        }
+            stop(); // unknown state   
     }
+}
+
+void Navigator::bug_nav(float goal_x, float goal_y)
+{
+    while (!GOAL_IN_REACH(goal_x, goal_y))
+    {
+        // orient to goal
+        float m_angle = orient_to(goal_x, goal_y);
+
+        // move towards the goal; stop at the first obstacle
+        float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
+        move_straight(dist, FREE_ENV_VEL, FWD, DISABLE_REACTIVE_NAV);
+
+        // update obstacle encounter position
+        obst_pos_x = rob_pos_x;
+        obst_pos_y = rob_pos_y;
+
+        // turn to the right
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+
+        // follow the obstacle
+        while(!leave_obst(m_angle, goal_x, goal_y))
+            follow_obst();
+    }
+
+}
+
+void Navigator::follow_obst()
+{
+    if (front_laser_dist < OBST_DIST_THRESH)
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+    else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
+    {
+        // move straight by BUG_STEP
+        float initial_pos_x = rob_pos_x;
+        float initial_pos_y = rob_pos_y;
+
+        linear_vel = OBST_DET_VEL;        
+        angular_vel = 0.0;
+
+        float dist_moved = 0.0;
+        ros::Rate loop_rate(10);
+
+        while (dist_moved < BUG_STEP && ros::ok())
+        {
+            publish_move();
+            ros::spinOnce();
+
+            // update global position extremes
+            update_global_extremes();
+
+            loop_rate.sleep();
+            
+            dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
+                pow((rob_pos_y - initial_pos_y), 2));
+        }
+        stop();
+    }
+    else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CCW); // rotate left
+    else 
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+}
+
+// TODO: have a turn bias: to be passed 
+// TODO: what if the bumper is hit? recall move_to? -- not a good idea. check for the dist...
+// TODO: time limit per call.
+// TODO: the move straight function stops when either of the laser ranges go down below thresh, this will
+// make the robot follow random obstacles! -- but at the end (should still get to the goal)?
+// TODO: send +XTRM_DIST, -XTRM_DIST for the corner goto positions so that the robot always gets the
+// best estimate of the corners now!
+bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
+{
+    // if just encountered obstacle, return false
+    if (rob_pos_x == obst_pos_x && rob_pos_y == obst_pos_y)
+        return false;
+    
+    float curr_angle = atan2f(goal_y-rob_pos_y, goal_x-rob_pos_x);
+    
+    float prev_dist = sqrt(pow(obst_pos_y-goal_x, 2) + pow(obst_pos_y-goal_y, 2));
+    float curr_dist = sqrt(pow(rob_pos_x-goal_x, 2) +  pow(rob_pos_y-goal_y, 2));
+
+    // if not near the initial obstacle encounter coordinates and on the m_line, leave
+    if (fabs(curr_angle - m_angle) < BUG_TOL && !GOAL_IN_REACH(obst_pos_x, obst_pos_y))
+        if (curr_dist < prev_dist)
+            return true;
+    
+    return false;
+}
+
+float Navigator::orient_to(float goal_x, float goal_y)
+{
+    // rotate towards goal
+    float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
+
+    if (goal_y > 0) // goal ccw
+    {  
+        if (rob_yaw > 0)
+            (rob_yaw - m_angle > 0) ? rotate(rob_yaw - m_angle, MAX_ANG_VEL, CW) : 
+                rotate(m_angle - rob_yaw, MAX_ANG_VEL, CCW);
+        else
+            rotate(m_angle + rob_yaw, MAX_ANG_VEL, CCW);
+    }
+    else // goal cw
+    {
+        if (rob_yaw < 0)
+            (rob_yaw - m_angle < 0) ? rotate(fabs(rob_yaw - m_angle), MAX_ANG_VEL, CCW) : 
+                rotate(fabs(m_angle - rob_yaw), MAX_ANG_VEL, CW);
+        else
+            rotate(m_angle + rob_yaw, MAX_ANG_VEL, CW);
+    }
+
+    return m_angle;
 }
 
 void Navigator::stop()
@@ -387,8 +486,12 @@ void Navigator::publish_move()
 
 void Navigator::update_global_extremes()
 {
-    if(rob_pos_x > max_pos_x) {max_pos_x = rob_pos_x; }
-    else if(rob_pos_x < min_pos_x) {min_pos_x = rob_pos_x; }
-    else if(rob_pos_y > max_pos_y) {max_pos_y = rob_pos_y; }
-    else if(rob_pos_y < min_pos_y) {min_pos_y = rob_pos_y; }
+    if (rob_pos_x > max_pos_x) 
+        max_pos_x = rob_pos_x;
+    else if (rob_pos_x < min_pos_x) 
+        min_pos_x = rob_pos_x;
+    else if (rob_pos_y > max_pos_y) 
+        max_pos_y = rob_pos_y;
+    else if (rob_pos_y < min_pos_y) 
+        min_pos_y = rob_pos_y;
 }
