@@ -457,7 +457,7 @@ void Navigator::follow_obst()
 }
 
 void Navigator::nudge()
-// {
+{
     // move straight by BUG_STEP
         float initial_pos_x = rob_pos_x;
         float initial_pos_y = rob_pos_y;
