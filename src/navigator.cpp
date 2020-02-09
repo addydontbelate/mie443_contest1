@@ -479,9 +479,6 @@ void Navigator::follow_obst()
 // best estimate of the corners now!
 bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     // if just encountered obstacle, return false
     if (rob_pos_x == obst_pos_x && rob_pos_y == obst_pos_y)
     {
@@ -508,9 +505,6 @@ bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
 
 float Navigator::orient_to(float goal_x, float goal_y)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     // rotate towards goal
     float m_angle = atan2f(goal_y - rob_pos_y, goal_x - rob_pos_x);
 
