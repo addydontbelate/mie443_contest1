@@ -436,7 +436,7 @@ void Navigator::follow_obst()
     if (front_laser_dist < OBST_DIST_THRESH)
     {
         rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
-        nudge();
+        // nudge();
     }
     else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
     {   
@@ -450,14 +450,14 @@ void Navigator::follow_obst()
     else
     {
         rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
-        nudge();
+        // nudge();
     }
-    
+
     update_time();
 }
 
 void Navigator::nudge()
-{
+// {
     // move straight by BUG_STEP
         float initial_pos_x = rob_pos_x;
         float initial_pos_y = rob_pos_y;
