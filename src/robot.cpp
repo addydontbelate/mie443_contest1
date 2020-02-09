@@ -1,6 +1,7 @@
-#include "navigator.h"
+#include "robot.h"
+#include <stdio.h>
 
-void Navigator::init(ros::NodeHandle* nh)
+void Robot::init(ros::NodeHandle* nh)
 {
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
@@ -9,110 +10,62 @@ void Navigator::init(ros::NodeHandle* nh)
     vel_pub = nh->advertise<geometry_msgs::Twist> ("cmd_vel_mux/input/teleop", 1);
 }
 
-Navigator::Navigator()
+Robot::Robot()
 {
-    // init velocities
     angular_vel = 0.0;
     linear_vel = 0.0;
-    num_obst_response = OBST_RESPONSE_LIM;
 }
 
-void Navigator::rotate(float rad, float angular_speed, bool clockwise)
+void Robot::rotate(float rad, bool clockwise)
 {
-    // ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
-    
     float initial_yaw = rob_yaw;
 
-    if (clockwise)
-        angular_vel = -fabs(angular_speed);
-    else
-        angular_vel = fabs(angular_speed);
-
+    // Set robot vars
     linear_vel = 0.0;
+    if (clockwise)
+        angular_vel = -fabs(MAX_ANG_VEL);
+    else
+        angular_vel = fabs(MAX_ANG_VEL);
 
 	float angle_turned = 0.0;
-    ros::Rate loop_rate(10);
-	
-    if (rad < M_PI)
-        while (angle_turned < rad && ros::ok())
-        {
-            initial_yaw = rob_yaw;
-            ros::spinOnce();
-            publish_move();
-            loop_rate.sleep();
-            
-            angle_turned += fabs(rob_yaw - initial_yaw);
-        }
-    else
+    while (angle_turned < rad && ros::ok())
     {
-        while (angle_turned < M_PI && ros::ok())
-        {
-            initial_yaw = rob_yaw;
-            ros::spinOnce();
-            publish_move();
-            loop_rate.sleep();
-            
-            angle_turned += fabs(rob_yaw - initial_yaw);
-        }
-        // ROS_INFO("[DEBUG] Calling rotate again!");
-        rotate(rad-M_PI, angular_speed, clockwise);
+        initial_yaw = rob_yaw;
+        publish_move();
+        loop_rate.sleep();
+        angle_turned += fabs(rob_yaw - initial_yaw);
     }
     
     stop();
-
-    // ROS_INFO("[NAV] Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
 }
 
-void Navigator::move_straight(float dist, float linear_speed, bool forward)
+void Robot::move_straight(float dist, float linear_speed, bool forward)
 {
 	// initial pose before moving
 	float initial_pos_x = rob_pos_x;
     float initial_pos_y = rob_pos_y;
 
+    // Set Nav vars 
+    angular_vel = 0.0;
 	if (forward)
 		linear_vel = fabs(linear_speed); // positive for forward
 	else
 		linear_vel = -fabs(linear_speed); // nagtive for backwards
-	
-    angular_vel = 0.0;
-
+    
+    // Keep moving as long as distance travelled is under limit
 	float dist_moved = 0.0;
-	ros::Rate loop_rate(10);
-
 	while (dist_moved < dist && ros::ok())
     {
         publish_move();
 		ros::spinOnce();
-
-        // update global position extremes
-        update_global_extremes();
-
-        if (bumper_hit)
-        {   
-            ROS_INFO("[BUMP_HIT] Detected hit while moving straight!");
-            bumper_hit = false; // reset flag
-            respond_to_bump();
-            return; // recalculate move
-        }
-        else if (front_laser_dist < OBST_DIST_THRESH || right_laser_dist < OBST_DIST_THRESH || 
-            left_laser_dist < OBST_DIST_THRESH)
-        {
-            // reactive navigation
-            ROS_INFO("[NAV] Too close to the walls, moving away!");
-            respond_to_obst();
-            return;
-        }
-
-		loop_rate.sleep();
-		
+		loop_rate.sleep();		
         dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
 			pow((rob_pos_y - initial_pos_y), 2));
 	}
-
 	stop();
 }
 
-void Navigator::move_to(float goal_x, float goal_y) 
+void Robot::move_to(float goal_x, float goal_y) 
 {
     ROS_INFO("[NAV] Currently at (%f, %f); Moving to (%f, %f);", rob_pos_x, rob_pos_y, goal_x, goal_y);
     float m_angle = 0.0;
@@ -155,33 +108,29 @@ void Navigator::move_to(float goal_x, float goal_y)
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
 
-void Navigator::move_right(float dist, float linear_speed, float angular_speed)
+void Robot::move_right(float dist, float linear_speed)
 {
-    // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
-    rotate_right(angular_speed);
-    move_straight(dist, linear_speed, FWD);
-    // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+    rotate_right(MAX_ANG_VEL);
+    move_straight(dist, linear_speed, true);
 }
 
-void Navigator::move_left(float dist, float linear_speed, float angular_speed)
+void Robot::move_left(float dist, float linear_speed)
 {
-    // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
-    rotate_left(angular_speed);
-    move_straight(dist, linear_speed, FWD);
-    // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
+    rotate_left(MAX_ANG_VEL);
+    move_straight(dist, linear_speed, true);
 }
 
-void Navigator::rotate_right(float angular_speed)
+void Robot::rotate_righ)
 {
-    rotate(DEG2RAD(90), angular_speed, CW);
+    rotate(DEG2RAD(90), MAX_ANG_VEL, true);
 }
 
-void Navigator::rotate_left(float angular_speed)
+void Robot::rotate_lef)
 {
-    rotate(DEG2RAD(90), angular_speed, CCW);
+    rotate(DEG2RAD(90), MAX_ANG_VEL, false);
 }
 
-void Navigator::respond_to_bump()
+void Robot::respond_to_bump()
 {
     // decrement available responses
     (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
@@ -253,7 +202,7 @@ void Navigator::respond_to_bump()
     }
 }
 
-void Navigator::respond_to_obst()
+void Robot::respond_to_obst()
 {
     // decrement available responses
     (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
@@ -371,24 +320,55 @@ void Navigator::respond_to_obst()
     }
 }
 
-void Navigator::stop()
+void Robot::stop()
 {
     rob_vel.angular.z = 0.0;
     rob_vel.linear.x = 0.0;
     publish_move();
 }
 
-void Navigator::publish_move() 
-{
+void Robot::publish_move() 
+{   
+    ros::spinOnce();
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     vel_pub.publish(rob_vel);
 }
 
-void Navigator::update_global_extremes()
+// Callbacks 
+
+void Robot::bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
 {
-    if(rob_pos_x > max_pos_x) {max_pos_x = rob_pos_x; }
-    else if(rob_pos_x < min_pos_x) {min_pos_x = rob_pos_x; }
-    else if(rob_pos_y > max_pos_y) {max_pos_y = rob_pos_y; }
-    else if(rob_pos_y < min_pos_y) {min_pos_y = rob_pos_y; }
+	bumper[msg->bumper] = msg->state;
+    
+    if (msg->state == kobuki_msgs::BumperEvent::PRESSED)
+    {
+        ROS_INFO("%s bumper hit!", (msg->bumper == kobuki_msgs::BumperEvent::LEFT) ? "LEFT" : 
+            (msg->bumper == kobuki_msgs::BumperEvent::CENTER) ? "CENTER" : "RIGHT" );
+        bumper_hit = true; // set flag
+    }
+}
+
+void Robot::laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
+{
+    float n_lasers = (msg->angle_max - msg->angle_min)/msg->angle_increment; 
+    float desired_n_lasers = DEG2RAD(view_angle)/msg->angle_increment;
+
+    // find front_laser_dist over view_angle
+    for (uint32_t laser_idx = (n_lasers/2 - desired_n_lasers); laser_idx < (n_lasers/2 + desired_n_lasers); ++laser_idx)
+        front_laser_dist = std::min(front_laser_dist, msg->ranges[laser_idx]);
+    
+    // find left_laser_dist
+    for (uint32_t laser_idx = 0; laser_idx < (n_lasers/2 - desired_n_lasers) - 1; ++laser_idx)
+        left_laser_dist = std::min(left_laser_dist, msg->ranges[laser_idx]);
+    
+    // find right_laser_dist
+    for (uint32_t laser_idx = (n_lasers/2 + desired_n_lasers) + 1; laser_idx < msg->ranges.size(); ++laser_idx)
+        right_laser_dist = std::min(right_laser_dist, msg->ranges[laser_idx]);
+}
+
+void Robot::pos_callback(const nav_msgs::Odometry::ConstPtr& msg)
+{
+    pos = {msg->pose.pose.position.x, msg->pose.pose.position.y};
+    yaw = tf::getYaw(msg->pose.pose.orientation);
 }
