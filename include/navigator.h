@@ -30,11 +30,11 @@
 #define OBST_DET_VEL 0.1    // [m/s]
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m] 
-#define OBST_DIST_THRESH 0.5// [m]
+#define OBST_DIST_THRESH 0.6// [m]
 #define GOAL_REACH_DIST 0.15// [m]
 #define SF 1.15             // num; safety factor
 #define NUM_REPLANS 3       // num
-#define OBST_RESPONSE_LIM 5 // num
+#define OBST_RESPONSE_LIM 7 // num
 
 // direction macros
 #define FWD true
@@ -51,7 +51,7 @@
 #define BUG_STEP 0.25
 
 // macro for goal within reach
-#define GOAL_IN_REACH(goal_x, goal_y) (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST || fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST)
+#define GOAL_IN_REACH(goal_x, goal_y) (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST)
 
 // global robot state variables
 extern float rob_yaw;

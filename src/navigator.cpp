@@ -398,22 +398,22 @@ void Navigator::follow_obst()
     // go away then
     if (front_laser_dist < OBST_DIST_THRESH)
     {
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+        rotate(BUG_STEP/3, MAX_ANG_VEL, CW); // rotate right
         // nudge();
     }
     else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
     {   
-        nudge_fwd(BUG_STEP);   
+        nudge_fwd(BUG_STEP);  
     }
     else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
     {    
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CCW); // rotate left
-        // nudge(); // TODO: this could be the bug in the bug!!!
+        rotate(BUG_STEP/3, MAX_ANG_VEL, CCW); // rotate left
+        nudge_fwd(BUG_STEP/3); // TODO: this could be the bug in the bug!!!
     }
     else
     {
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
-        // nudge();
+        rotate(BUG_STEP/3, MAX_ANG_VEL, CW); // rotate right
+        nudge_fwd(BUG_STEP/3);
     }
 }
 
