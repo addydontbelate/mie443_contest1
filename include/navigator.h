@@ -1,3 +1,4 @@
+
 #ifndef INCLUDE_NAVIGATOR_H
 #define INCLUDE_NAVIGATOR_H
 
@@ -30,7 +31,7 @@
 #define OBST_DET_VEL 0.1    // [m/s]
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m] 
-#define OBST_DIST_THRESH 0.5// [m]
+#define OBST_DIST_THRESH 0.6// [m]
 #define GOAL_REACH_DIST 0.15// [m]
 #define SF 1.15             // num; safety factor
 #define NUM_REPLANS 2       // num
@@ -47,9 +48,11 @@
 #define ENABLE_REACTIVE_NAV true
 
 // bug 2 algorithm tolerance
-#define BUG_TOL 0.1  // [m]
-#define BUG_STEP 0.25 // [m & rad]
-#define BUG_TIMER 90  // [s]
+#define BUG_TOL 0.15        // [m]
+#define BUG_NDG_STEP 0.1    // [m]
+#define BUG_ANG_STEP M_PI/36// [rad]
+#define BUG_ANG_VEL M_PI/9  // [rad/s]
+#define BUG_TIMER 90        // [s]
 
 // macro for goal within reach
 #define GOAL_IN_REACH(goal_x, goal_y) (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST)

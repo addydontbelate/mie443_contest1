@@ -91,8 +91,9 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward, bool
             respond_to_bump();
             return; // recalculate move
         }
-        else if (front_laser_dist < OBST_DIST_THRESH || right_laser_dist < OBST_DIST_THRESH || 
-            left_laser_dist < OBST_DIST_THRESH)
+        else if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL || 
+                right_laser_dist < OBST_DIST_THRESH + BUG_TOL || 
+                left_laser_dist < OBST_DIST_THRESH + BUG_TOL)
         {
             // reactive navigation
             ROS_INFO("[NAV] Too close to the walls, moving away!");
@@ -401,28 +402,28 @@ void Navigator::follow_obst()
     // TODO: maybe set a tiny fwd velocity while all of this is happening?
     // TODO: have an immediate response if the robot is too close to walls;
     // go away then
-    if (front_laser_dist < OBST_DIST_THRESH)
+    if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
     {
         ROS_INFO("[BUG_NAV_DEBUG] Obst to front too close (%f), turning a bit right!", front_laser_dist);
-        rotate(BUG_STEP/4, MAX_ANG_VEL/3, CW); // rotate right
+        rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
         // nudge();
     }
     else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
     {   
         ROS_INFO("[BUG_NAV_DEBUG] Within range on left (%f), moving a bit forward!", left_laser_dist);
-        nudge_fwd(BUG_STEP);  
+        nudge_fwd(BUG_NDG_STEP);  
     }
     else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
     {    
         ROS_INFO("[BUG_NAV_DEBUG] Obst out of range on left (%f), moving a bit left!", left_laser_dist);
-        rotate(BUG_STEP/4, MAX_ANG_VEL/3, CCW); // rotate left
+        rotate(BUG_ANG_STEP, BUG_ANG_VEL, CCW); // rotate left
         // nudge_fwd(BUG_STEP/3); // TODO: this could be the bug in the bug!!!
     }
-    else if (left_laser_dist < SF*OBST_HIT_DIST) // else
+    else if (left_laser_dist < OBST_DIST_THRESH - BUG_TOL) // too close
     {
         ROS_INFO("[BUG_NAV_DEBUG] Too close on left (%f), moving a bit right!", left_laser_dist);
-        rotate(BUG_STEP/4, MAX_ANG_VEL/3, CW); // rotate right
-        nudge_fwd(BUG_STEP/4);
+        rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
+        nudge_fwd(BUG_NDG_STEP);
     }
 }
 
