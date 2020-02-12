@@ -30,8 +30,6 @@
 #define _NAV_TO_CNTR_ 4      // navigate to center
 #define _DO_RW_ 5            // do random walk
 
-// #define _RE_NAV_FRST_CRNR_ 4 // re-navigate navigate to first corner
-
 // global robot state variables
 uint8_t rob_state = _INIT_;
 uint8_t prev_rob_state = _INIT_; 
@@ -52,6 +50,10 @@ bool bumper_hit = false;        // recovery mode flag
 uint8_t bumper[NUM_BUMPER] = {kobuki_msgs::BumperEvent::RELEASED, 
     kobuki_msgs::BumperEvent::RELEASED, kobuki_msgs::BumperEvent::RELEASED};
 
+// global wall clock timer
+uint64_t seconds_elapsed = 0.0;
+TIME start;
+
 /**
  * ROS callback to record bumper hit.
  */
@@ -65,6 +67,9 @@ void bumper_callback(const kobuki_msgs::BumperEvent::ConstPtr& msg)
             (msg->bumper == kobuki_msgs::BumperEvent::CENTER) ? "CENTER" : "RIGHT" );
         bumper_hit = true; // set flag
     }
+
+    // update global timer
+    seconds_elapsed = TIME_S(CLOCK::now()-start).count();
 }
 
 /**
@@ -89,6 +94,9 @@ void laser_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
     // find right_laser_dist
     for (uint32_t laser_idx = (n_lasers/2 + desired_n_lasers) + 1; laser_idx < msg->ranges.size(); ++laser_idx)
         right_laser_dist = std::min(right_laser_dist, msg->ranges[laser_idx]);
+
+    // update global timer
+    seconds_elapsed = TIME_S(CLOCK::now()-start).count();
 }
 
 /**
@@ -99,6 +107,9 @@ void odom_callback(const nav_msgs::Odometry::ConstPtr& msg)
     rob_pos_x = msg->pose.pose.position.x; 
     rob_pos_y = msg->pose.pose.position.y;
     rob_yaw = tf::getYaw(msg->pose.pose.orientation);
+
+    // update global timer
+    seconds_elapsed = TIME_S(CLOCK::now()-start).count();
 }
 
 int main(int argc, char **argv)
@@ -118,8 +129,7 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(10);
 
     // contest count down timer
-    TIME start = CLOCK::now();
-    uint64_t seconds_elapsed = 0;
+    start = CLOCK::now();
     srand(time(0)); // init w time seed for random walk
 
     // robot loop

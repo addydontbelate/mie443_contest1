@@ -19,8 +19,6 @@
 #define CLOCK std::chrono::system_clock
 #define TIME_S std::chrono::duration_cast<std::chrono::seconds>
 #define TIME_LIMIT 480 // seconds
-#define addydontbelate(time_elapsed) ((time_elapsed <= TIME_LIMIT) ? true : false) 
-
 #define NUM_BUMPER 3 // LEFT, CENTER, RIGHT
 
 // angle conversion macros
@@ -68,6 +66,8 @@ extern float front_laser_dist;
 extern float left_laser_dist;
 extern float right_laser_dist;
 extern uint8_t bumper[NUM_BUMPER];
+extern uint64_t seconds_elapsed;
+extern TIME start;
 
 class Navigator
 {
@@ -76,8 +76,6 @@ class Navigator
    float linear_vel;   // <= 0.25 [m/s]
    float obst_pos_x;
    float obst_pos_y;
-   uint64_t seconds_elapsed;
-   TIME start;
    uint8_t num_obst_response; // OBST_RESPONSE_LIM
 
   
@@ -95,7 +93,7 @@ class Navigator
    void follow_obst();
    bool leave_obst(float m_angle, float goal_x, float goal_y);
    void update_time();
-   void nudge();
+   void nudge_fwd(float dist);
 
  public:
    // commands

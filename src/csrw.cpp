@@ -1,8 +1,7 @@
 #include "csrw.h"
 
 CSRW::CSRW(ros::NodeHandle* nh) 
-{ 
-    // default shallow copy constructor
+{
     nav.init(nh);
 
     // initialize coordinates
@@ -32,39 +31,39 @@ void CSRW::set_goal()
     {
         ROS_INFO("[CSRW] Heading to TOP_RIGHT_CORNER");
         top_left_crnr = {max_pos_x, max_pos_y}; // top left crnr estimate
-        goal_pos_x = EXTRM_DIST;//top_left_crnr[0];
-        goal_pos_y = -EXTRM_DIST;//top_left_crnr[1] - EXTRM_DIST; // head right
+        goal_pos_x = EXTRM_DIST;
+        goal_pos_y = -EXTRM_DIST; // head right
         goal_stage = TOP_LEFT_CRNR;
     }
     else if (goal_stage == TOP_LEFT_CRNR)
     {
         ROS_INFO("[CSRW] Heading to TOP_LEFT_CORNER");
         top_right_crnr = {max_pos_x, min_pos_y}; // top right crnr estimate
-        goal_pos_x = EXTRM_DIST;//top_right_crnr[0];
-        goal_pos_y = EXTRM_DIST;//top_right_crnr[1] + EXTRM_DIST; // head left (back)
+        goal_pos_x = EXTRM_DIST;
+        goal_pos_y = EXTRM_DIST; // head left (back)
         goal_stage = BOT_LEFT_CRNR;
     }
     else if(goal_stage == BOT_LEFT_CRNR)
     {
         ROS_INFO("[CSRW] Heading to BOTTOM_LEFT_CORNER");
         top_left_crnr = {max_pos_x, max_pos_y}; // re-estimate top left crnr
-        goal_pos_x = -EXTRM_DIST;//top_left_crnr[0] - EXTRM_DIST; // head down
-        goal_pos_y = EXTRM_DIST;//top_left_crnr[1];
+        goal_pos_x = -EXTRM_DIST; // head down
+        goal_pos_y = EXTRM_DIST;
         goal_stage = BOT_RIGHT_CRNR;
     }
     else if(goal_stage == BOT_RIGHT_CRNR)
     {
         ROS_INFO("[CSRW] Heading to BOTTOM_RIGHT_CORNER");
         bot_left_crnr = {min_pos_x, max_pos_y}; // bottom left crnr estimate
-        goal_pos_x = -EXTRM_DIST;//bot_left_crnr[0];
-        goal_pos_y = -EXTRM_DIST;//bot_left_crnr[1] - EXTRM_DIST; // head right
+        goal_pos_x = -EXTRM_DIST;
+        goal_pos_y = -EXTRM_DIST; // head right
         goal_stage = RENAV_TOP_RIGHT_CRNR;
     }
     else if (goal_stage == RENAV_TOP_RIGHT_CRNR)
     {
         bot_right_crnr = {min_pos_x, min_pos_y}; // bottom right crnr estimate
-        goal_pos_x = EXTRM_DIST;//bot_left_crnr[0] + EXTRM_DIST; // head up
-        goal_pos_y = -EXTRM_DIST;//bot_left_crnr[1];
+        goal_pos_x = EXTRM_DIST; // head up
+        goal_pos_y = -EXTRM_DIST;
         goal_stage = CNTR;
     }
     else if(goal_stage == CNTR)
@@ -96,7 +95,7 @@ void CSRW::do_rw()
 {
     // gen rand nums
     int delta_x = 0, delta_y = 0;
-    while (delta_x == 0 && delta_y == 0)
+    while (delta_x == 0 && delta_y == 0) // avoid delta_x = delta_y = 0
     {
         delta_x  = (int(rand()%3) - 1);
         delta_y  = (int(rand()%3) - 1);

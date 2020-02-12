@@ -2,9 +2,6 @@
 
 void Navigator::init(ros::NodeHandle* nh)
 {
-    start = CLOCK::now();
-    seconds_elapsed = 0;
-
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     
@@ -23,9 +20,6 @@ Navigator::Navigator()
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
 {
     // ROS_INFO("[NAV] Currently at (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     float initial_yaw = rob_yaw;
 
     if (clockwise)
@@ -39,7 +33,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
     ros::Rate loop_rate(10);
 	
     if (rad < M_PI)
-        while (angle_turned < rad && ros::ok())
+        while (angle_turned < rad && ros::ok() && seconds_elapsed < TIME_LIMIT)
         {
             initial_yaw = rob_yaw;
             ros::spinOnce();
@@ -50,7 +44,7 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
         }
     else
     {
-        while (angle_turned < M_PI && ros::ok())
+        while (angle_turned < M_PI && ros::ok() && seconds_elapsed < TIME_LIMIT)
         {
             initial_yaw = rob_yaw;
             ros::spinOnce();
@@ -63,16 +57,11 @@ void Navigator::rotate(float rad, float angular_speed, bool clockwise)
     }
     
     stop();
-    update_time();
-
     // ROS_INFO("[NAV] Rotated to (%f, %f) @ %f deg;", rob_pos_x, rob_pos_y, RAD2DEG(rob_yaw));
 }
 
 void Navigator::move_straight(float dist, float linear_speed, bool forward, bool reactive_nav_enabled)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
 	// initial pose before moving
 	float initial_pos_x = rob_pos_x;
     float initial_pos_y = rob_pos_y;
@@ -87,7 +76,7 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward, bool
 	float dist_moved = 0.0;
 	ros::Rate loop_rate(10);
 
-	while (dist_moved < dist && ros::ok())
+	while (dist_moved < dist && ros::ok() && seconds_elapsed < TIME_LIMIT)
     {
         publish_move();
 		ros::spinOnce();
@@ -121,20 +110,16 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward, bool
 	}
 
 	stop();
-    update_time();
 }
 
 void Navigator::move_to(float goal_x, float goal_y) 
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     ROS_INFO("[NAV] Currently at (%f, %f); Moving to (%f, %f);", rob_pos_x, rob_pos_y, goal_x, goal_y);
     uint8_t num_tries = 0;
     float initial_pos_x = rob_pos_x;
     float initial_pos_y = rob_pos_y;
 
-    while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS) 
+    while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT) 
     {
         num_obst_response = OBST_RESPONSE_LIM;
 
@@ -155,56 +140,36 @@ void Navigator::move_to(float goal_x, float goal_y)
         bug_nav(goal_x, goal_y);
     
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
-    update_time();
 }
 
 void Navigator::move_right(float dist, float linear_speed, float angular_speed)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_right(angular_speed);
     move_straight(dist, linear_speed, FWD);
     // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
-    update_time();
 }
 
 void Navigator::move_left(float dist, float linear_speed, float angular_speed)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     // ROS_INFO("[NAV] Currently at (%f, %f);", rob_pos_x, rob_pos_y);
     rotate_left(angular_speed);
     move_straight(dist, linear_speed, FWD);
     // ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
-    update_time();
 }
 
 void Navigator::rotate_right(float angular_speed)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     rotate(DEG2RAD(90), angular_speed, CW);
-    update_time();
 }
 
 void Navigator::rotate_left(float angular_speed)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     rotate(DEG2RAD(90), angular_speed, CCW);
-    update_time();
 }
 
 void Navigator::respond_to_bump()
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     // decrement available responses
     (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
 
@@ -273,15 +238,10 @@ void Navigator::respond_to_bump()
             move_straight(SF*OBST_DIST_THRESH, OBST_HIT_DIST, BCK);
         }
     }
-
-    update_time();
 }
 
 void Navigator::respond_to_obst()
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     // decrement available responses
     (num_obst_response > 0) ? (num_obst_response--) : (num_obst_response = 0);
 
@@ -393,16 +353,14 @@ void Navigator::respond_to_obst()
         else 
             stop(); // unknown state   
     }
-
-    update_time();
 }
 
 void Navigator::bug_nav(float goal_x, float goal_y)
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
+	ros::Rate loop_rate(10);
 
-    while (!GOAL_IN_REACH(goal_x, goal_y))
+    // limit both loops to run at 10Hz for stable behavior
+    while (!GOAL_IN_REACH(goal_x, goal_y) && ros::ok() && seconds_elapsed < TIME_LIMIT)
     {
         ROS_INFO("[BUG_NAV] Started bug 2 algorithm!");
 
@@ -418,21 +376,26 @@ void Navigator::bug_nav(float goal_x, float goal_y)
         obst_pos_y = rob_pos_y;
 
         // turn to the right
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
+        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right [default bias]
 
         // follow the obstacle
-        while(!leave_obst(m_angle, goal_x, goal_y))
+        while(!leave_obst(m_angle, goal_x, goal_y) && ros::ok() && seconds_elapsed < TIME_LIMIT)
+        {
+            ros::spinOnce();
             follow_obst();
-    }
+            
+            loop_rate.sleep();
+        }
 
-    update_time();
+        loop_rate.sleep();
+    }
 }
 
 void Navigator::follow_obst()
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
+    // TODO: maybe set a tiny fwd velocity while all of this is happening?
+    // TODO: have an immediate response if the robot is too close to walls;
+    // go away then
     if (front_laser_dist < OBST_DIST_THRESH)
     {
         rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
@@ -440,66 +403,58 @@ void Navigator::follow_obst()
     }
     else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
     {   
-        nudge();   
+        nudge_fwd(BUG_STEP);   
     }
     else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
     {    
         rotate(BUG_STEP/2, MAX_ANG_VEL, CCW); // rotate left
-        nudge();
+        // nudge(); // TODO: this could be the bug in the bug!!!
     }
     else
     {
         rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right
         // nudge();
     }
-
-    update_time();
 }
 
-void Navigator::nudge()
+void Navigator::nudge_fwd(float dist)
 {
     // move straight by BUG_STEP
-        float initial_pos_x = rob_pos_x;
-        float initial_pos_y = rob_pos_y;
+    float initial_pos_x = rob_pos_x;
+    float initial_pos_y = rob_pos_y;
 
-        linear_vel = OBST_DET_VEL;        
-        angular_vel = 0.0;
+    linear_vel = OBST_DET_VEL;        
+    angular_vel = 0.0;
 
-        float dist_moved = 0.0;
-        ros::Rate loop_rate(10);
+    float dist_moved = 0.0;
+    ros::Rate loop_rate(10);
 
-        while (dist_moved < BUG_STEP && ros::ok())
-        {
-            publish_move();
-            ros::spinOnce();
+    while (dist_moved < dist && ros::ok())
+    {
+        publish_move();
+        ros::spinOnce();
 
-            // update global position extremes
-            update_global_extremes();
+        // update global position extremes
+        update_global_extremes();
 
-            loop_rate.sleep();
-            
-            dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
-                pow((rob_pos_y - initial_pos_y), 2));
-        }
+        loop_rate.sleep();
+        
+        dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
+            pow((rob_pos_y - initial_pos_y), 2));
+    }
 
-        stop();
+    stop();
 }
 
-// TODO: have a turn bias: to be passed 
 // TODO: what if the bumper is hit? recall move_to? -- not a good idea. check for the dist...
 // TODO: time limit per call.
 // TODO: the move straight function stops when either of the laser ranges go down below thresh, this will
 // make the robot follow random obstacles! -- but at the end (should still get to the goal)?
-// TODO: send +XTRM_DIST, -XTRM_DIST for the corner goto positions so that the robot always gets the
-// best estimate of the corners now!
 bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
 {
     // if just encountered obstacle, return false
     if (rob_pos_x == obst_pos_x && rob_pos_y == obst_pos_y)
-    {
-        update_time();
         return false;
-    }
 
     float curr_angle = atan2f(goal_y-rob_pos_y, goal_x-rob_pos_x);
     
@@ -509,12 +464,8 @@ bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
     // if not near the initial obstacle encounter coordinates and on the m_line, leave
     if (fabs(curr_angle - m_angle) < BUG_TOL && !GOAL_IN_REACH(obst_pos_x, obst_pos_y))
         if (curr_dist < prev_dist)
-        {
-            update_time();
             return true;
-        }
 
-    update_time();
     return false;
 }
 
@@ -540,37 +491,25 @@ float Navigator::orient_to(float goal_x, float goal_y)
             rotate(m_angle + rob_yaw, MAX_ANG_VEL, CW);
     }
 
-    update_time();
     return m_angle;
 }
 
 void Navigator::stop()
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     rob_vel.angular.z = 0.0;
     rob_vel.linear.x = 0.0;
     publish_move();
-    update_time();
 }
 
 void Navigator::publish_move() 
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     rob_vel.angular.z = angular_vel;
     rob_vel.linear.x = linear_vel;
     vel_pub.publish(rob_vel);
-    update_time();
 }
 
 void Navigator::update_global_extremes()
 {
-    if (!addydontbelate(seconds_elapsed))
-        return;
-
     if (rob_pos_x > max_pos_x) 
         max_pos_x = rob_pos_x;
     else if (rob_pos_x < min_pos_x) 
@@ -579,11 +518,4 @@ void Navigator::update_global_extremes()
         max_pos_y = rob_pos_y;
     else if (rob_pos_y < min_pos_y) 
         min_pos_y = rob_pos_y;
-    
-    update_time();
-}
-
-void Navigator::update_time()
-{
-    seconds_elapsed = TIME_S(CLOCK::now()-start).count();
 }
