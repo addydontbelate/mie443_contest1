@@ -30,10 +30,10 @@
 #define OBST_DET_VEL 0.1    // [m/s]
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m] 
-#define OBST_DIST_THRESH 0.6// [m]
+#define OBST_DIST_THRESH 0.5// [m]
 #define GOAL_REACH_DIST 0.15// [m]
 #define SF 1.15             // num; safety factor
-#define NUM_REPLANS 3       // num
+#define NUM_REPLANS 2       // num
 #define OBST_RESPONSE_LIM 3 // num
 
 // direction macros
@@ -47,7 +47,7 @@
 #define ENABLE_REACTIVE_NAV true
 
 // bug 2 algorithm tolerance
-#define BUG_TOL 0.1   // [m]
+#define BUG_TOL 0.1  // [m]
 #define BUG_STEP 0.25 // [m & rad]
 #define BUG_TIMER 90  // [s]
 

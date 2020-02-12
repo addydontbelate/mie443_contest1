@@ -74,7 +74,7 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward, bool
     angular_vel = 0.0;
 
 	float dist_moved = 0.0;
-	ros::Rate loop_rate(10);
+	ros::Rate loop_rate(20);
 
 	while (dist_moved < dist && ros::ok() && seconds_elapsed < TIME_LIMIT)
     {
@@ -119,24 +119,24 @@ void Navigator::move_to(float goal_x, float goal_y)
     float initial_pos_x = rob_pos_x;
     float initial_pos_y = rob_pos_y;
 
-    while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT) 
-    {
-        num_obst_response = OBST_RESPONSE_LIM;
+    // while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT) 
+    // {
+    //     num_obst_response = OBST_RESPONSE_LIM;
 
-        // orient towards goal
-        orient_to(goal_x, goal_y);
+    //     // orient towards goal
+    //     orient_to(goal_x, goal_y);
 
-        // move straight to goal
-        float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
-        move_straight(dist, FREE_ENV_VEL, FWD);
+    //     // move straight to goal
+    //     float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
+    //     move_straight(dist, FREE_ENV_VEL, FWD);
 
-        // increment move
-        ROS_INFO("[NAV] Required %d replans so far", num_tries);
-        num_tries++;
-    }
+    //     // increment move
+    //     ROS_INFO("[NAV] Required %d replans so far", num_tries);
+    //     num_tries++;
+    // }
 
     // if still not reached goal and exceeded replan limit: initiate bug 2 navigation algorithm
-    if (!GOAL_IN_REACH(goal_x, goal_y) && num_tries >= NUM_REPLANS)
+    if (!GOAL_IN_REACH(goal_x, goal_y) /*&& num_tries >= NUM_REPLANS*/)
         bug_nav(goal_x, goal_y);
     
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
@@ -357,7 +357,7 @@ void Navigator::respond_to_obst()
 
 void Navigator::bug_nav(float goal_x, float goal_y)
 {
-	ros::Rate loop_rate(10);
+	ros::Rate loop_rate(20);
 
     // limit both loops to run at 10Hz for stable behavior
     while (!GOAL_IN_REACH(goal_x, goal_y) && ros::ok() && seconds_elapsed < TIME_LIMIT)
@@ -372,14 +372,14 @@ void Navigator::bug_nav(float goal_x, float goal_y)
 
         // move towards the goal; stop at the first obstacle
         float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
-        move_straight(dist, FREE_ENV_VEL, FWD, DISABLE_REACTIVE_NAV);
+        move_straight(dist, FREE_ENV_VEL/2, FWD, DISABLE_REACTIVE_NAV);
 
         // update obstacle encounter position
         obst_pos_x = rob_pos_x;
         obst_pos_y = rob_pos_y;
 
         // turn to the right
-        rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right [default bias]
+        rotate_right(MAX_ANG_VEL); // rotate right [default bias]
 
         // follow the obstacle
         while(!leave_obst(m_angle, goal_x, goal_y) && ros::ok() && 
@@ -403,22 +403,26 @@ void Navigator::follow_obst()
     // go away then
     if (front_laser_dist < OBST_DIST_THRESH)
     {
-        rotate(BUG_STEP/3, MAX_ANG_VEL, CW); // rotate right
+        ROS_INFO("[BUG_NAV_DEBUG] Obst to front too close (%f), turning a bit right!", front_laser_dist);
+        rotate(BUG_STEP/4, MAX_ANG_VEL/3, CW); // rotate right
         // nudge();
     }
     else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
     {   
+        ROS_INFO("[BUG_NAV_DEBUG] Within range on left (%f), moving a bit forward!", left_laser_dist);
         nudge_fwd(BUG_STEP);  
     }
     else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
     {    
-        rotate(BUG_STEP/3, MAX_ANG_VEL, CCW); // rotate left
-        nudge_fwd(BUG_STEP/3); // TODO: this could be the bug in the bug!!!
+        ROS_INFO("[BUG_NAV_DEBUG] Obst out of range on left (%f), moving a bit left!", left_laser_dist);
+        rotate(BUG_STEP/4, MAX_ANG_VEL/3, CCW); // rotate left
+        // nudge_fwd(BUG_STEP/3); // TODO: this could be the bug in the bug!!!
     }
-    else
+    else if (left_laser_dist < SF*OBST_HIT_DIST) // else
     {
-        rotate(BUG_STEP/3, MAX_ANG_VEL, CW); // rotate right
-        nudge_fwd(BUG_STEP/3);
+        ROS_INFO("[BUG_NAV_DEBUG] Too close on left (%f), moving a bit right!", left_laser_dist);
+        rotate(BUG_STEP/4, MAX_ANG_VEL/3, CW); // rotate right
+        nudge_fwd(BUG_STEP/4);
     }
 }
 
@@ -469,8 +473,10 @@ bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
     // if not near the initial obstacle encounter coordinates and on the m_line, leave
     if (fabs(curr_angle - m_angle) < BUG_TOL && !GOAL_IN_REACH(obst_pos_x, obst_pos_y))
         if (curr_dist < prev_dist)
+        {
+            ROS_INFO("[BUG_NAV] Leaving obstacle!");
             return true;
-
+        }
     return false;
 }
 
