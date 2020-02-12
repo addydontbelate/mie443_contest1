@@ -364,6 +364,9 @@ void Navigator::bug_nav(float goal_x, float goal_y)
     {
         ROS_INFO("[BUG_NAV] Started bug 2 algorithm!");
 
+        TIME bug_start = CLOCK::now();
+        uint64_t bug_time = 0.0;
+
         // orient to goal
         float m_angle = orient_to(goal_x, goal_y);
 
@@ -379,12 +382,14 @@ void Navigator::bug_nav(float goal_x, float goal_y)
         rotate(BUG_STEP/2, MAX_ANG_VEL, CW); // rotate right [default bias]
 
         // follow the obstacle
-        while(!leave_obst(m_angle, goal_x, goal_y) && ros::ok() && seconds_elapsed < TIME_LIMIT)
+        while(!leave_obst(m_angle, goal_x, goal_y) && ros::ok() && 
+            seconds_elapsed < TIME_LIMIT && bug_time < BUG_TIMER)
         {
             ros::spinOnce();
             follow_obst();
             
             loop_rate.sleep();
+            bug_time = TIME_S(CLOCK::now()-bug_start).count();
         }
 
         loop_rate.sleep();

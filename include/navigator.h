@@ -47,8 +47,9 @@
 #define ENABLE_REACTIVE_NAV true
 
 // bug 2 algorithm tolerance
-#define BUG_TOL 0.1
-#define BUG_STEP 0.25
+#define BUG_TOL 0.1   // [m]
+#define BUG_STEP 0.25 // [m & rad]
+#define BUG_TIMER 90  // [s]
 
 // macro for goal within reach
 #define GOAL_IN_REACH(goal_x, goal_y) (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST)
