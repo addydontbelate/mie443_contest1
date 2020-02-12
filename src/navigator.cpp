@@ -137,7 +137,7 @@ void Navigator::move_to(float goal_x, float goal_y)
 
     // if still not reached goal and exceeded replan limit: initiate bug 2 navigation algorithm
     if (!GOAL_IN_REACH(goal_x, goal_y) && num_tries >= NUM_REPLANS)
-        ; // bug_nav(goal_x, goal_y);
+        bug_nav(goal_x, goal_y);
     
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }

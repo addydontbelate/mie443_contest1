@@ -26,7 +26,7 @@
 #define DEG2RAD(deg) ((deg) * M_PI/180.)
 
 // velocity and movement limits
-#define FREE_ENV_VEL 0.25   // [m/s]
+#define FREE_ENV_VEL 0.2    // [m/s]
 #define OBST_DET_VEL 0.1    // [m/s]
 #define MAX_ANG_VEL M_PI/6  // [rad/s]
 #define OBST_HIT_DIST 0.2   // [m] 
@@ -34,7 +34,7 @@
 #define GOAL_REACH_DIST 0.15// [m]
 #define SF 1.15             // num; safety factor
 #define NUM_REPLANS 3       // num
-#define OBST_RESPONSE_LIM 7 // num
+#define OBST_RESPONSE_LIM 3 // num
 
 // direction macros
 #define FWD true
