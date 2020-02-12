@@ -92,7 +92,6 @@ class Navigator
    float orient_to(float goal_x, float goal_y);
    void follow_obst();
    bool leave_obst(float m_angle, float goal_x, float goal_y);
-   void update_time();
    void nudge_fwd(float dist);
 
  public:
