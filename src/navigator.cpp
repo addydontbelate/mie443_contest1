@@ -386,6 +386,12 @@ void Navigator::bug_nav(float goal_x, float goal_y)
         while(!leave_obst(m_angle, goal_x, goal_y) && ros::ok() && 
             seconds_elapsed < TIME_LIMIT && bug_time < BUG_TIMER)
         {
+            if (bumper_hit)
+            {
+                bumper_hit = false; // reset flag
+                respond_to_bump();
+            }
+
             ros::spinOnce();
             follow_obst();
             
