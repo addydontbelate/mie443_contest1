@@ -424,7 +424,7 @@ void Navigator::follow_obst()
     if (front_laser_dist < OBST_DIST_THRESH)
         rotate_right(BUG_ANG_VEL);
     else if (right_laser_dist < OBST_DIST_THRESH)
-        rotate(DEG2RAD(180), BUG_ANG_VEL, CCW)
+        rotate(DEG2RAD(180), BUG_ANG_VEL, CCW);
     else
     {
         // turn left or right with controller anguler velocity
