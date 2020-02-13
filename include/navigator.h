@@ -36,7 +36,7 @@
 #define GOAL_REACH_DIST 0.15// [m]
 #define SF 1.15             // num; safety factor
 #define NUM_REPLANS 2       // num
-#define OBST_RESPONSE_LIM 3 // num
+#define OBST_RESPONSE_LIM 5 // num
 
 // direction macros
 #define FWD true
@@ -97,7 +97,6 @@ class Navigator
    float orient_to(float goal_x, float goal_y);
    void follow_obst();
    bool leave_obst(float m_angle, float goal_x, float goal_y);
-   void nudge_fwd(float dist);
 
  public:
    // commands

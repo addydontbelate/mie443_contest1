@@ -123,26 +123,33 @@ void Navigator::move_to(float goal_x, float goal_y)
     float initial_pos_x = rob_pos_x;
     float initial_pos_y = rob_pos_y;
 
-    // while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT) 
-    // {
-    //     num_obst_response = OBST_RESPONSE_LIM;
+    while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT) 
+    {
+        num_obst_response = OBST_RESPONSE_LIM;
 
-    //     // orient towards goal
-    //     orient_to(goal_x, goal_y);
+        // orient towards goal
+        orient_to(goal_x, goal_y);
 
-    //     // move straight to goal
-    //     float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
-    //     move_straight(dist, FREE_ENV_VEL, FWD);
+        // move straight to goal
+        float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
+        move_straight(dist, FREE_ENV_VEL, FWD);
 
-    //     // increment move
-    //     ROS_INFO("[NAV] Required %d replans so far", num_tries);
-    //     num_tries++;
-    // }
+        // increment move
+        num_tries++;
+        ROS_INFO("[NAV] Required %d replans so far", num_tries);
+    }
+
+    // reset num_tries for bug_nav
+    num_tries = 0;
 
     // if still not reached goal and exceeded replan limit: initiate bug 2 navigation algorithm
-    if (!GOAL_IN_REACH(goal_x, goal_y) /*&& num_tries >= NUM_REPLANS*/)
+    if (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT)
+    {
         bug_nav(goal_x, goal_y);
-    
+        num_tries++;
+        ROS_INFO("[NAV] Required %d replans so far", num_tries + NUM_REPLANS);
+    }
+
     ROS_INFO("[NAV] Moved to (%f, %f);", rob_pos_x, rob_pos_y);
 }
 
@@ -393,6 +400,8 @@ void Navigator::bug_nav(float goal_x, float goal_y)
             {
                 bumper_hit = false; // reset flag
                 respond_to_bump();
+                stop();
+                return;
             }
 
             ros::spinOnce();
@@ -402,77 +411,25 @@ void Navigator::bug_nav(float goal_x, float goal_y)
             bug_time = TIME_S(CLOCK::now()-bug_start).count();
         }
 
-        loop_rate.sleep();
+        stop();
     }
+
+    stop();
 }
 
 void Navigator::follow_obst()
 {
     // get angular speed from controller
-    float ctrllr_ang_vel = -pid.calculate(OBST_DIST_THRESH, left_laser_dist); // negative for turning right
+    float cntrl_ang_vel = -pid.calculate(OBST_DIST_THRESH, left_laser_dist); // negative for turning right
 
-    if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
+    if (front_laser_dist < OBST_DIST_THRESH)
         rotate_right(BUG_ANG_VEL);
     else
     {
-        angular_vel = ctrllr_ang_vel;
+        angular_vel = cntrl_ang_vel;
         linear_vel = OBST_DET_VEL;
         publish_move();
     }
-
-    // TODO: have an immediate response if the robot is too close to walls;
-    // if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
-    // {
-    //     ROS_INFO("[BUG_NAV_DEBUG] Obst to front too close (%f), turning a bit right!", front_laser_dist);
-    //     rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
-    //     // nudge();
-    // }
-    // else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
-    // {   
-    //     ROS_INFO("[BUG_NAV_DEBUG] Within range on left (%f), moving a bit forward!", left_laser_dist);
-    //     nudge_fwd(BUG_NDG_STEP);  
-    // }
-    // else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
-    // {    
-    //     ROS_INFO("[BUG_NAV_DEBUG] Obst out of range on left (%f), moving a bit left!", left_laser_dist);
-    //     rotate(BUG_ANG_STEP, BUG_ANG_VEL, CCW); // rotate left
-    //     // nudge_fwd(BUG_STEP/3); // TODO: this could be the bug in the bug!!!
-    // }
-    // else if (left_laser_dist < OBST_DIST_THRESH - BUG_TOL) // too close
-    // {
-    //     ROS_INFO("[BUG_NAV_DEBUG] Too close on left (%f), moving a bit right!", left_laser_dist);
-    //     rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
-    //     nudge_fwd(BUG_NDG_STEP);
-    // }
-}
-
-void Navigator::nudge_fwd(float dist)
-{
-    // move straight by BUG_STEP
-    float initial_pos_x = rob_pos_x;
-    float initial_pos_y = rob_pos_y;
-
-    linear_vel = OBST_DET_VEL;        
-    angular_vel = 0.0;
-
-    float dist_moved = 0.0;
-    ros::Rate loop_rate(10);
-
-    while (dist_moved < dist && ros::ok())
-    {
-        publish_move();
-        ros::spinOnce();
-
-        // update global position extremes
-        update_global_extremes();
-
-        loop_rate.sleep();
-        
-        dist_moved = sqrt(pow((rob_pos_x - initial_pos_x), 2) +
-            pow((rob_pos_y - initial_pos_y), 2));
-    }
-
-    stop();
 }
 
 bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
