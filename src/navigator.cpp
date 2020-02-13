@@ -17,7 +17,7 @@ Navigator::Navigator()
     num_obst_response = OBST_RESPONSE_LIM;
 
     // PID at 10Hz for bug2 navigation algorithm
-    pid = PID(0.1, BUG_ANG_VEL, -BUG_ANG_VEL, 1.2, 0.5, 0.5);
+    pid = PID(0.1, BUG_ANG_VEL, -BUG_ANG_VEL, 6.0, 1.5, 2.0);
 }
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
@@ -424,14 +424,17 @@ void Navigator::follow_obst()
 
     // make sure that we are not within hit dist on front and right
     if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
-    {
-        angular_vel = -fabs(cntrl_ang_vel); //rotate_right(BUG_ANG_VEL);
-        linear_vel = 0.0;
-    }
+        rotate_right(BUG_ANG_VEL);
     else if (right_laser_dist < OBST_DIST_THRESH - BUG_TOL)
     {
         angular_vel = fabs(cntrl_ang_vel); // rotate cw or left
         linear_vel = 0.0;
+    }
+    else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
+    {
+        // suppress extra rotation
+        angular_vel = 0;
+        linear_vel = OBST_DET_VEL;
     }
     else
     {
