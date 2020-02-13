@@ -15,6 +15,9 @@ Navigator::Navigator()
     angular_vel = 0.0;
     linear_vel = 0.0;
     num_obst_response = OBST_RESPONSE_LIM;
+
+    // PID at 10Hz for bug2 navigation algorithm
+    pid = PID(0.1, BUG_ANG_VEL, -BUG_ANG_VEL, 6.0, 1.5, 2.0);
 }
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
@@ -74,7 +77,7 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward, bool
     angular_vel = 0.0;
 
 	float dist_moved = 0.0;
-	ros::Rate loop_rate(20);
+	ros::Rate loop_rate(10);
 
 	while (dist_moved < dist && ros::ok() && seconds_elapsed < TIME_LIMIT)
     {
@@ -358,7 +361,7 @@ void Navigator::respond_to_obst()
 
 void Navigator::bug_nav(float goal_x, float goal_y)
 {
-	ros::Rate loop_rate(20);
+	ros::Rate loop_rate(10);
 
     // limit both loops to run at 10Hz for stable behavior
     while (!GOAL_IN_REACH(goal_x, goal_y) && ros::ok() && seconds_elapsed < TIME_LIMIT)
@@ -405,32 +408,42 @@ void Navigator::bug_nav(float goal_x, float goal_y)
 
 void Navigator::follow_obst()
 {
-    // TODO: maybe set a tiny fwd velocity while all of this is happening?
-    // TODO: have an immediate response if the robot is too close to walls;
-    // go away then
+    // get angular speed from controller
+    float ctrllr_ang_vel = -pid.calculate(OBST_DIST_THRESH, left_laser_dist); // negative for turning right
+
     if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
+        rotate_right(BUG_ANG_VEL);
+    else
     {
-        ROS_INFO("[BUG_NAV_DEBUG] Obst to front too close (%f), turning a bit right!", front_laser_dist);
-        rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
-        // nudge();
+        angular_vel = ctrllr_ang_vel;
+        linear_vel = OBST_DET_VEL;
+        publish_move();
     }
-    else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
-    {   
-        ROS_INFO("[BUG_NAV_DEBUG] Within range on left (%f), moving a bit forward!", left_laser_dist);
-        nudge_fwd(BUG_NDG_STEP);  
-    }
-    else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
-    {    
-        ROS_INFO("[BUG_NAV_DEBUG] Obst out of range on left (%f), moving a bit left!", left_laser_dist);
-        rotate(BUG_ANG_STEP, BUG_ANG_VEL, CCW); // rotate left
-        // nudge_fwd(BUG_STEP/3); // TODO: this could be the bug in the bug!!!
-    }
-    else if (left_laser_dist < OBST_DIST_THRESH - BUG_TOL) // too close
-    {
-        ROS_INFO("[BUG_NAV_DEBUG] Too close on left (%f), moving a bit right!", left_laser_dist);
-        rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
-        nudge_fwd(BUG_NDG_STEP);
-    }
+
+    // TODO: have an immediate response if the robot is too close to walls;
+    // if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
+    // {
+    //     ROS_INFO("[BUG_NAV_DEBUG] Obst to front too close (%f), turning a bit right!", front_laser_dist);
+    //     rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
+    //     // nudge();
+    // }
+    // else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
+    // {   
+    //     ROS_INFO("[BUG_NAV_DEBUG] Within range on left (%f), moving a bit forward!", left_laser_dist);
+    //     nudge_fwd(BUG_NDG_STEP);  
+    // }
+    // else if (left_laser_dist > OBST_DIST_THRESH + BUG_TOL)
+    // {    
+    //     ROS_INFO("[BUG_NAV_DEBUG] Obst out of range on left (%f), moving a bit left!", left_laser_dist);
+    //     rotate(BUG_ANG_STEP, BUG_ANG_VEL, CCW); // rotate left
+    //     // nudge_fwd(BUG_STEP/3); // TODO: this could be the bug in the bug!!!
+    // }
+    // else if (left_laser_dist < OBST_DIST_THRESH - BUG_TOL) // too close
+    // {
+    //     ROS_INFO("[BUG_NAV_DEBUG] Too close on left (%f), moving a bit right!", left_laser_dist);
+    //     rotate(BUG_ANG_STEP, BUG_ANG_VEL, CW); // rotate right
+    //     nudge_fwd(BUG_NDG_STEP);
+    // }
 }
 
 void Navigator::nudge_fwd(float dist)
@@ -462,10 +475,6 @@ void Navigator::nudge_fwd(float dist)
     stop();
 }
 
-// TODO: what if the bumper is hit? recall move_to? -- not a good idea. check for the dist...
-// TODO: time limit per call.
-// TODO: the move straight function stops when either of the laser ranges go down below thresh, this will
-// make the robot follow random obstacles! -- but at the end (should still get to the goal)?
 bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
 {
     // if just encountered obstacle, return false

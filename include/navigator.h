@@ -14,6 +14,7 @@
 #include <kobuki_msgs/BumperEvent.h>
 #include <cmath>
 #include <chrono>
+#include "pid.h"
 
 // timer macros
 #define TIME std::chrono::time_point<std::chrono::system_clock>
@@ -51,7 +52,7 @@
 #define BUG_TOL 0.15        // [m]
 #define BUG_NDG_STEP 0.1    // [m]
 #define BUG_ANG_STEP M_PI/36// [rad]
-#define BUG_ANG_VEL M_PI/9  // [rad/s]
+#define BUG_ANG_VEL M_PI/8  // [rad/s]
 #define BUG_TIMER 90        // [s]
 
 // macro for goal within reach
@@ -81,7 +82,7 @@ class Navigator
    float obst_pos_x;
    float obst_pos_y;
    uint8_t num_obst_response; // OBST_RESPONSE_LIM
-
+   PID pid;
   
    // robot velocity publisher
    ros::Publisher vel_pub;
