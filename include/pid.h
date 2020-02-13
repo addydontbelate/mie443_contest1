@@ -25,7 +25,7 @@ class PID
 
    // returns the manipulated variable given a setpoint and current process value
    float calculate(float setpoint, float pv);
-   ~PID();
+   ~PID() {};
 };
 
 #endif // INCLUDE_PID_H
