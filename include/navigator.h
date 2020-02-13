@@ -50,8 +50,6 @@
 
 // bug 2 algorithm tolerance
 #define BUG_TOL 0.15        // [m]
-#define BUG_NDG_STEP 0.1    // [m]
-#define BUG_ANG_STEP M_PI/36// [rad]
 #define BUG_ANG_VEL M_PI/8  // [rad/s]
 #define BUG_TIMER 40        // [s]
 

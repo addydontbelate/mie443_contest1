@@ -434,6 +434,7 @@ void Navigator::follow_obst()
     }
     else if (right_laser_dist < OBST_DIST_THRESH - BUG_TOL)
     {
+        ROS_INFO("[BUG_NAV] Too close on right, turning around!");
         angular_vel = fabs(cntrl_ang_vel); // turn left
         linear_vel = 0.0;
     }
