@@ -143,7 +143,7 @@ void Navigator::move_to(float goal_x, float goal_y)
     num_tries = 0;
 
     // if still not reached goal and exceeded replan limit: initiate bug 2 navigation algorithm
-    if (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT)
+    while (!GOAL_IN_REACH(goal_x, goal_y) && num_tries < NUM_REPLANS && seconds_elapsed < TIME_LIMIT)
     {
         bug_nav(goal_x, goal_y);
         num_tries++;
@@ -371,7 +371,7 @@ void Navigator::bug_nav(float goal_x, float goal_y)
 	ros::Rate loop_rate(10);
 
     // limit both loops to run at 10Hz for stable behavior
-    while (!GOAL_IN_REACH(goal_x, goal_y) && ros::ok() && seconds_elapsed < TIME_LIMIT)
+    while (!GOAL_IN_REACH(goal_x, goal_y) && seconds_elapsed < TIME_LIMIT)
     {
         ROS_INFO("[BUG_NAV] Started bug 2 algorithm!");
 
@@ -406,15 +406,13 @@ void Navigator::bug_nav(float goal_x, float goal_y)
 
             ros::spinOnce();
             follow_obst();
-            
+            publish_move();
             loop_rate.sleep();
             bug_time = TIME_S(CLOCK::now()-bug_start).count();
         }
 
         stop();
     }
-
-    stop();
 }
 
 void Navigator::follow_obst()
@@ -422,13 +420,16 @@ void Navigator::follow_obst()
     // get angular speed from controller
     float cntrl_ang_vel = -pid.calculate(OBST_DIST_THRESH, left_laser_dist); // negative for turning right
 
+    // make sure that we are not within hit dist on front and right
     if (front_laser_dist < OBST_DIST_THRESH)
         rotate_right(BUG_ANG_VEL);
+    else if (right_laser_dist < OBST_DIST_THRESH)
+        rotate(DEG2RAD(180), BUG_ANG_VEL, CCW)
     else
     {
+        // turn left or right with controller anguler velocity
         angular_vel = cntrl_ang_vel;
         linear_vel = OBST_DET_VEL;
-        publish_move();
     }
 }
 
