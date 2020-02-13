@@ -17,7 +17,7 @@ Navigator::Navigator()
     num_obst_response = OBST_RESPONSE_LIM;
 
     // PID at 10Hz for bug2 navigation algorithm
-    pid = PID(0.1, BUG_ANG_VEL, -BUG_ANG_VEL, 6.0, 1.5, 2.0);
+    pid = PID(0.1, BUG_ANG_VEL, -BUG_ANG_VEL, 1.2, 0.5, 0.5);
 }
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
@@ -99,9 +99,11 @@ void Navigator::move_straight(float dist, float linear_speed, bool forward, bool
                 left_laser_dist < OBST_DIST_THRESH + BUG_TOL)
         {
             // reactive navigation
-            ROS_INFO("[NAV] Too close to the walls, moving away!");
             if (reactive_nav_enabled)
+            {
+                ROS_INFO("[NAV] Too close to the walls, moving away!");
                 respond_to_obst();
+            }
             else
                 stop();
             return;
@@ -369,12 +371,11 @@ void Navigator::respond_to_obst()
 void Navigator::bug_nav(float goal_x, float goal_y)
 {
 	ros::Rate loop_rate(10);
+    ROS_INFO("[BUG_NAV] Started bug 2 algorithm!");
 
     // limit both loops to run at 10Hz for stable behavior
     while (!GOAL_IN_REACH(goal_x, goal_y) && seconds_elapsed < TIME_LIMIT)
     {
-        ROS_INFO("[BUG_NAV] Started bug 2 algorithm!");
-
         TIME bug_start = CLOCK::now();
         uint64_t bug_time = 0.0;
 
@@ -399,6 +400,7 @@ void Navigator::bug_nav(float goal_x, float goal_y)
             if (bumper_hit)
             {
                 bumper_hit = false; // reset flag
+                num_obst_response = OBST_RESPONSE_LIM;
                 respond_to_bump();
                 stop();
                 return;
@@ -421,16 +423,26 @@ void Navigator::follow_obst()
     float cntrl_ang_vel = -pid.calculate(OBST_DIST_THRESH, left_laser_dist); // negative for turning right
 
     // make sure that we are not within hit dist on front and right
-    if (front_laser_dist < OBST_DIST_THRESH)
-        rotate_right(BUG_ANG_VEL);
-    else if (right_laser_dist < OBST_DIST_THRESH)
-        rotate(DEG2RAD(180), BUG_ANG_VEL, CCW);
+    if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
+    {
+        angular_vel = -fabs(cntrl_ang_vel); //rotate_right(BUG_ANG_VEL);
+        linear_vel = 0.0;
+    }
+    else if (right_laser_dist < OBST_DIST_THRESH - BUG_TOL)
+    {
+        angular_vel = fabs(cntrl_ang_vel); // rotate cw or left
+        linear_vel = 0.0;
+    }
     else
     {
         // turn left or right with controller anguler velocity
         angular_vel = cntrl_ang_vel;
         linear_vel = OBST_DET_VEL;
     }
+
+    // get rid of the gazebo error
+    if (std::isnan(angular_vel))
+        angular_vel = -BUG_ANG_VEL;
 }
 
 bool Navigator::leave_obst(float m_angle, float goal_x, float goal_y)
