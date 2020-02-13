@@ -16,8 +16,8 @@ Navigator::Navigator()
     linear_vel = 0.0;
     num_obst_response = OBST_RESPONSE_LIM;
 
-    // PID at 10Hz for bug2 navigation algorithm
-    pid = PID(0.1, BUG_ANG_VEL, -BUG_ANG_VEL, 6.0, 1.5, 2.0);
+    // controller for bug2
+    reset_pid();
 }
 
 void Navigator::rotate(float rad, float angular_speed, bool clockwise)
@@ -372,26 +372,27 @@ void Navigator::bug_nav(float goal_x, float goal_y)
 {
 	ros::Rate loop_rate(10);
     ROS_INFO("[BUG_NAV] Started bug 2 algorithm!");
+    reset_pid();
 
-    // limit both loops to run at 10Hz for stable behavior
-    while (!GOAL_IN_REACH(goal_x, goal_y) && seconds_elapsed < TIME_LIMIT)
+    // bug timer
+    TIME bug_start = CLOCK::now();
+    uint64_t bug_time = 0.0;
+
+    while (!GOAL_IN_REACH(goal_x, goal_y) && bug_time < BUG_TIMER && seconds_elapsed < TIME_LIMIT)
     {
-        TIME bug_start = CLOCK::now();
-        uint64_t bug_time = 0.0;
-
         // orient to goal
         float m_angle = orient_to(goal_x, goal_y);
 
         // move towards the goal; stop at the first obstacle
         float dist = sqrt(pow((rob_pos_x - goal_x), 2) + pow((rob_pos_y - goal_y), 2));
-        move_straight(dist, FREE_ENV_VEL/2, FWD, DISABLE_REACTIVE_NAV);
+        move_straight(dist, FREE_ENV_VEL, FWD, DISABLE_REACTIVE_NAV);
 
         // update obstacle encounter position
         obst_pos_x = rob_pos_x;
         obst_pos_y = rob_pos_y;
 
         // turn to the right
-        rotate_right(MAX_ANG_VEL); // rotate right [default bias]
+        rotate_right(BUG_ANG_VEL); // rotate right [default bias]
 
         // follow the obstacle
         while(!leave_obst(m_angle, goal_x, goal_y) && ros::ok() && 
@@ -425,16 +426,16 @@ void Navigator::follow_obst()
     // make sure that we are not within hit dist on front and right
     if (front_laser_dist < OBST_DIST_THRESH + BUG_TOL)
         rotate_right(BUG_ANG_VEL);
-    else if (right_laser_dist < OBST_DIST_THRESH - BUG_TOL)
-    {
-        angular_vel = fabs(cntrl_ang_vel); // rotate cw or left
-        linear_vel = 0.0;
-    }
     else if (fabs(left_laser_dist - OBST_DIST_THRESH) < BUG_TOL)
     {
-        // suppress extra rotation
+        // suppress extra rotation: stability
         angular_vel = 0;
         linear_vel = OBST_DET_VEL;
+    }
+    else if (right_laser_dist < OBST_DIST_THRESH - BUG_TOL)
+    {
+        angular_vel = fabs(cntrl_ang_vel); // turn left
+        linear_vel = 0.0;
     }
     else
     {
@@ -518,4 +519,10 @@ void Navigator::update_global_extremes()
         max_pos_y = rob_pos_y;
     else if (rob_pos_y < min_pos_y) 
         min_pos_y = rob_pos_y;
+}
+
+void Navigator::reset_pid()
+{
+    // PID at 10Hz for bug2 navigation algorithm
+    pid = PID(0.1, BUG_ANG_VEL, -BUG_ANG_VEL, 6.0, 1.5, 2.0);
 }

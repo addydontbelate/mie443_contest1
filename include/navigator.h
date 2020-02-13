@@ -53,7 +53,7 @@
 #define BUG_NDG_STEP 0.1    // [m]
 #define BUG_ANG_STEP M_PI/36// [rad]
 #define BUG_ANG_VEL M_PI/8  // [rad/s]
-#define BUG_TIMER 90        // [s]
+#define BUG_TIMER 40        // [s]
 
 // macro for goal within reach
 #define GOAL_IN_REACH(goal_x, goal_y) (fabs(rob_pos_x - goal_x) < GOAL_REACH_DIST && fabs(rob_pos_y - goal_y) < GOAL_REACH_DIST)
@@ -96,6 +96,7 @@ class Navigator
    void update_global_extremes();
    float orient_to(float goal_x, float goal_y);
    void follow_obst();
+   void reset_pid();
    bool leave_obst(float m_angle, float goal_x, float goal_y);
 
  public:
